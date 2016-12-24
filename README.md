@@ -40,6 +40,11 @@ public class Reporter {
     @Value(key = "leaders", attr = "count")
     private int leaderCount;
     
+  	@Value(key = "area", attr = "ranking")
+    public void setRanking(int ranking) {
+        this.ranking = ranking;
+    }
+  
   	@Value(key = "*")
     public void setAll(HashMap<Object, String> all) {
         this.all = all;
