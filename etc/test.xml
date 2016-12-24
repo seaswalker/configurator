@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<china>
+    <area ranking="3">960</area>
+    <phone>86</phone>
+    <domain>cn</domain>
+    <leaders count="3">
+        <leader>习近平</leader>
+        <leader>胡锦涛</leader>
+        <leader>江泽民</leader>
+    </leaders>
+</china>

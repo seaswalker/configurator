@@ -24,4 +24,9 @@ public @interface Value {
      */
     public String attr() default "";
 
+    /**
+     * 分隔符，用于获取String数组时.
+     */
+    public String separator() default "";
+
 }

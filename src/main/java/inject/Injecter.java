@@ -1,17 +1,14 @@
 package inject;
 
+import bean.BeanContainer;
 import bean.Component;
-import bean.Value;
 import conf.ConfSource;
 import org.reflections.Reflections;
-import org.reflections.scanners.FieldAnnotationsScanner;
-import org.reflections.scanners.MethodAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
 import java.util.Set;
 
 /**
@@ -24,6 +21,10 @@ public class Injecter {
     private ConfSource source;
     //扫描的包
     private String basePackage;
+    //是否启用配置注入
+    private boolean isConfEnabled = false;
+    //是否启用依赖注入
+    private boolean isIocEnabled = false;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
@@ -34,6 +35,7 @@ public class Injecter {
      */
     public Injecter source(ConfSource source) {
         this.source = source;
+        source.load();
         return this;
     }
 
@@ -48,38 +50,42 @@ public class Injecter {
     }
 
     /**
-     * 注入.
+     * 启用配置注入.
+     *
+     * @return {@link Injecter}
      */
-    public void inject() {
-        Reflections reflections = new Reflections(new ConfigurationBuilder().
-            setUrls(ClasspathHelper.forPackage(basePackage)));
-        logger.info("Start scan package: {}.", basePackage);
-        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Component.class);
-        logger.info("Scan package {} finished.", basePackage);
-        System.out.println(classes);
+    public Injecter enbaleConf() {
+        this.isConfEnabled = true;
+        return this;
     }
 
     /**
+     * 启用依赖注入，即IOC.
      *
-     * @param fields
+     * @return {@link Injecter}
      */
-    private void injectToFields(Set<Field> fields) {
-        logger.info("Start inject fields...");
-        fields.stream().forEach(field -> {
-            Value inject = field.getAnnotation(Value.class);
-            if (inject != null) {
-                String key = inject.key();
-                String attr = inject.attr();
-                field.setAccessible(true);
-                if (key.equals("*")) {
+    public Injecter enableIoc() {
+        this.isIocEnabled = true;
+        return this;
+    }
 
-                } else {
-                    Class type = field.getType();
-                    if (type == String.class) {
-                    }
-                }
-            }
-        });
+    /**
+     * 执行注入.
+     *
+     * @return {@link BeanContainer}
+     */
+    public BeanContainer inject() {
+        if (!isConfEnabled && !isIocEnabled) {
+            throw new IllegalStateException("You must enable conf inject or ioc or both.");
+        }
+        Reflections reflections = new Reflections(new ConfigurationBuilder().
+                setUrls(ClasspathHelper.forPackage(basePackage)));
+        logger.info("Start scan package: {}.", basePackage);
+        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Component.class);
+        logger.info("Scan package {} finished.", basePackage);
+        BeanContainer container = new BeanContainer(source, isConfEnabled, isIocEnabled);
+        classes.forEach(c -> container.register(c));
+        return container;
     }
 
 }

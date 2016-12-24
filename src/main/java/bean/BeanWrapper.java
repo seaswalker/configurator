@@ -44,4 +44,14 @@ public class BeanWrapper {
         this.target = target;
     }
 
+    @Override
+    public String toString() {
+        return "BeanWrapper{" +
+                "scope=" + scope +
+                ", beanName='" + beanName + '\'' +
+                ", targetClass=" + targetClass +
+                ", target=" + target +
+                '}';
+    }
+
 }

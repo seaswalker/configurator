@@ -3,6 +3,8 @@ package conf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 /**
  * {@link ConfSource}骨架实现，提供统一的getXXX方法实现.
  *
@@ -64,6 +66,11 @@ abstract class AbstractConfSource implements ConfSource {
     @Override
     public String[] getStringArray(String key, String separator) {
         return holder.get(key).split(separator);
+    }
+
+    @Override
+    public Map<String, String> getAll() {
+        return holder.getAll();
     }
 
 }

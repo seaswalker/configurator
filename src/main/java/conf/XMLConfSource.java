@@ -56,17 +56,18 @@ public class XMLConfSource extends AbstractConfSource {
      */
     private void doResolve(Element element, String key) {
         NodeList list = element.getChildNodes();
-        boolean isLeaf = false;
+        boolean isLeaf = true;
         for (int i = 0, l = list.getLength(); i < l; i++) {
             Node node = list.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 isLeaf = false;
-                saveUnLeafAttributes(node, key);
                 doResolve((Element) node, newKey(node, key));
             }
         }
         if (isLeaf) {
             saveLeaf(key, element);
+        } else {
+            saveUnLeafAttributes(element, key);
         }
     }
 
@@ -125,6 +126,48 @@ public class XMLConfSource extends AbstractConfSource {
      */
     public String[] getStringArray(String key) {
         return holder.get(key).split(holder.getMultiSeparator());
+    }
+
+    /**
+     * 获取属性值.
+     */
+    public String getAttribute(String key, String attr) {
+        return holder.getMetaData(key, attr);
+    }
+
+    /**
+     * 获取int形式的属性值.
+     */
+    public int getAttributeAsInt(String key, String attr) {
+        return Integer.parseInt(getAttribute(key, attr));
+    }
+
+    /**
+     * 获取long形式的属性值.
+     */
+    public long getAttributeAsLong(String key, String attr) {
+        return Long.parseLong(getAttribute(key, attr));
+    }
+
+    /**
+     * 获取boolean形式的属性值.
+     */
+    public boolean getAttributeAsBoolean(String key, String attr) {
+        return Boolean.parseBoolean(getAttribute(key, attr));
+    }
+
+    /**
+     * 获取doule形式的值.
+     */
+    public double getAttributeAsDouble(String key, String value) {
+        return Double.parseDouble(getAttribute(key, value));
+    }
+
+    /**
+     * 获取String数组形式的值.
+     */
+    public String[] getAttributeAsStringArray(String key, String attr, String separator) {
+        return getAttribute(key, attr).split(separator);
     }
 
 }
