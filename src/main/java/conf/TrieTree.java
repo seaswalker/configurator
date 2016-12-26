@@ -1,7 +1,5 @@
 package conf;
 
-import bean.Value;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -12,7 +10,6 @@ import java.util.Map;
  */
 public final class TrieTree {
 
-    @Value
     private final Node head = new Node("HEAD");
 
     //多值分隔符
