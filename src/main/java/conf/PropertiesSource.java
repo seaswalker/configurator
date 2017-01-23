@@ -9,9 +9,9 @@ import java.util.Properties;
  *
  * @author skywalker
  */
-public class PropertiesConfSource extends AbstractConfSource {
+public class PropertiesSource extends AbstractTreeBasedSource {
 
-    public PropertiesConfSource(String path) {
+    public PropertiesSource(String path) {
         super(path);
     }
 
@@ -26,6 +26,11 @@ public class PropertiesConfSource extends AbstractConfSource {
         } catch (IOException e) {
             logger.error("{} load failed.", path, e);
         }
+    }
+
+    @Override
+    public String[] getStringArray(String key) {
+        throw new UnsupportedOperationException();
     }
 
 }

@@ -1,0 +1,13 @@
+{
+  "ip": "192.168.0.235",
+  "port": 8080,
+  "version": 1.0,
+  "wait_ack": true,
+  "interval": {
+    "enabled": false,
+    "unit": "s",
+    "value": 10
+  },
+  "msisdns": ["1368392", "12334123"],
+  "loc_ids": [22343, 34211, 2333]
+}

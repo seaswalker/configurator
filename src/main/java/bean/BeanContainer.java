@@ -1,7 +1,7 @@
 package bean;
 
-import conf.ConfSource;
-import conf.XMLConfSource;
+import conf.Source;
+import conf.XmlSource;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.ReflectionUtils;
 
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public final class BeanContainer {
 
-    private final ConfSource confSource;
+    private final Source source;
     private final boolean isXMLBased;
     private final Map<String, BeanWrapper> nameMap = new HashMap<>();
     private final Map<Class, BeanWrapper> classMap = new HashMap<>();
@@ -26,9 +26,9 @@ public final class BeanContainer {
     //是否启用依赖注入
     private final boolean isIocEnabled;
 
-    public BeanContainer(ConfSource confSource, boolean isConfEnabled, boolean isIocEnabled) {
-        this.confSource = confSource;
-        this.isXMLBased = (confSource instanceof XMLConfSource);
+    public BeanContainer(Source source, boolean isConfEnabled, boolean isIocEnabled) {
+        this.source = source;
+        this.isXMLBased = (source instanceof XmlSource);
         this.isConfEnabled = isConfEnabled;
         this.isIocEnabled = isIocEnabled;
     }
@@ -189,7 +189,7 @@ public final class BeanContainer {
     private void injectConfByField(Object instance, Class beanClass) {
         Set<Field> fields = ReflectionUtils.getAllFields(beanClass, ReflectionUtils.withAnnotation(Value.class));
         for (Field field : fields) {
-            Object result = resolveConfByValue(field, field.getType(), field.getGenericType());
+            Object result = resolveConfByValue(field, field.getName(), field.getType(), field.getGenericType());
             if (result != null) {
                 setFieldValue(field, instance, result);
             }
@@ -204,11 +204,12 @@ public final class BeanContainer {
         for (Method method : methods) {
             int count = method.getParameterCount();
             if (count != 1) {
-                throw new IllegalStateException("Unsupported method parameter count: " + count + ", method: " + method.toString() + ".");
+                throw new IllegalStateException("Unsupported method parameter count: " + count + ", method: "
+                        + method.toString() + ".");
             }
             Class[] methodClasses = method.getParameterTypes();
             Type[] methodTypes = method.getGenericParameterTypes();
-            Object result = resolveConfByValue(method, methodClasses[0], methodTypes[0]);
+            Object result = resolveConfByValue(method, resolveSetterMethodName(method), methodClasses[0], methodTypes[0]);
             if (result != null) {
                 invokeMethod(method, instance, result);
             }
@@ -216,14 +217,31 @@ public final class BeanContainer {
     }
 
     /**
+     * 根据setter方法名得到key.
+     *
+     * @param method {@link Method}
+     */
+    private String resolveSetterMethodName(Method method) {
+        String name = null;
+        String methodName = method.getName();
+        if (methodName.startsWith("set") && methodName.length() > 3) {
+            name = methodName.substring(3, methodName.length()).toLowerCase();
+        }
+        return name;
+    }
+
+    /**
      * 根据{@link Value}得到配置的值.
      */
-    private Object resolveConfByValue(AccessibleObject object, Class clazz, Type type) {
+    private Object resolveConfByValue(AccessibleObject object, String name, Class clazz, Type type) {
         Object result;
         Value value = object.getAnnotation(Value.class);
         String key = value.key(), attr = null;
         if (StringUtils.isEmpty(key)) {
-            throw new IllegalStateException("Malformed key: " + key + ".");
+            key = name;
+            if (StringUtils.isEmpty(key)) {
+                throw new IllegalStateException("Key must be confirmed.");
+            }
         }
         if (isXMLBased) {
             attr = value.attr();
@@ -232,58 +250,49 @@ public final class BeanContainer {
             if (!isEligibleMap(clazz, type)) {
                 throw new IllegalStateException("Inject all configurations for " + object + " failed, type Map<String,String> required.");
             }
-            result = confSource.getAll();
+            result = source.getAll();
         } else {
             if (clazz == String.class) {
                 if (isRequireAttr(attr)) {
-                    result = XMLConfSource.class.cast(confSource).getAttribute(key, attr);
+                    result = XmlSource.class.cast(source).getAttribute(key, attr);
                 } else {
-                    result = confSource.get(key);
+                    result = source.get(key);
                 }
             } else if (clazz == int.class) {
                 if (isRequireAttr(attr)) {
-                    result = XMLConfSource.class.cast(confSource).getAttributeAsInt(key, attr);
+                    result = XmlSource.class.cast(source).getAttributeAsInt(key, attr);
                 } else {
-                    result = confSource.getInt(key);
+                    result = source.getInt(key);
                 }
             } else if (clazz == long.class) {
                 if (isRequireAttr(attr)) {
-                    result = XMLConfSource.class.cast(confSource).getAttributeAsLong(key, attr);
+                    result = XmlSource.class.cast(source).getAttributeAsLong(key, attr);
                 } else {
-                    result = confSource.getLong(key);
+                    result = source.getLong(key);
                 }
             } else if (clazz == boolean.class) {
                 if (isRequireAttr(attr)) {
-                    result = XMLConfSource.class.cast(confSource).getAttributeAsBoolean(key, attr);
+                    result = XmlSource.class.cast(source).getAttributeAsBoolean(key, attr);
                 } else {
-                    result = confSource.getBoolean(key);
+                    result = source.getBoolean(key);
                 }
             } else if (clazz == double.class) {
                 if (isRequireAttr(attr)) {
-                    result = XMLConfSource.class.cast(confSource).getAttributeAsDouble(key, attr);
+                    result = XmlSource.class.cast(source).getAttributeAsDouble(key, attr);
                 } else {
-                    result = confSource.getDouble(key);
+                    result = source.getDouble(key);
                 }
             } else if (clazz == String[].class) {
                 String separator = value.separator();
-                boolean isSeparatorLegal = StringUtils.isNotEmpty(separator);
-                if (isXMLBased) {
-                    if (isSeparatorLegal) {
-                        checkSeparator(separator, object);
-                        result = XMLConfSource.class.cast(confSource).getAttributeAsStringArray(key, attr, separator);
-                    } else {
-                        if (isSeparatorLegal) {
-                            result = confSource.getStringArray(key, separator);
-                        } else {
-                            result = XMLConfSource.class.cast(confSource).getStringArray(key);
-                        }
-                    }
-                } else {
+                if (isRequireAttr(attr)) {
                     checkSeparator(separator, object);
-                    result = confSource.getStringArray(key, separator);
+                    result = XmlSource.class.cast(source).getAttributeAsStringArray(key, attr, separator);
+                } else {
+                    result = StringUtils.isEmpty(separator) ? source.getStringArray(key) :
+                            source.getStringArray(key, separator);
                 }
             } else {
-                throw new IllegalStateException("Unsupport target type " + clazz.getSimpleName() + " for AccessibleObject " + object + ".");
+                throw new IllegalStateException("Unsupported target type " + clazz.getSimpleName() + " for AccessibleObject " + object + ".");
             }
         }
         return result;
@@ -301,21 +310,21 @@ public final class BeanContainer {
     }
 
     /**
-     * 字段是否需要{@link ConfSource}的所有配置.
+     * 字段是否需要{@link Source}的所有配置.
      */
     private boolean isRequireAll(String key) {
         return (key.equals("*"));
     }
 
     /**
-     * 判断是否需要注入属性，仅对{@link XMLConfSource}有效.
+     * 判断是否需要注入属性，仅对{@link XmlSource}有效.
      */
     private boolean isRequireAttr(String attr) {
         return (isXMLBased && StringUtils.isNotEmpty(attr));
     }
 
     /**
-     * 给定的字段是否是{@link Map}，且泛型满足{@link ConfSource}.getAll()方法的返回值.
+     * 给定的字段是否是{@link Map}，且泛型满足{@link Source}.getAll()方法的返回值.
      *
      * @return true，如果满足
      */

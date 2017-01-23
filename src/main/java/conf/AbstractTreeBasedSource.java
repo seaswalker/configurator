@@ -1,23 +1,18 @@
 package conf;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 
 /**
- * {@link ConfSource}骨架实现，提供统一的getXXX方法实现.
+ * {@link Source}骨架实现，基于{@link TrieTree}，提供统一的getXXX方法实现.
  *
  * @author skywalker
  */
-abstract class AbstractConfSource implements ConfSource {
+abstract class AbstractTreeBasedSource extends AbstractSource {
 
-    protected final String path;
     protected final TrieTree holder = new TrieTree();
-    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    protected AbstractConfSource(String path) {
-        this.path = path;
+    protected AbstractTreeBasedSource(String path) {
+        super(path);
     }
 
     /**

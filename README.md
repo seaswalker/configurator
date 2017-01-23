@@ -3,7 +3,12 @@
 
 ## 配置注入
 
-目前实现了对xml文件了属性文件(properties)的支持。
+目前支持xml、属性文件(properties)和json.
+
+如果没有显式指定key，那么:
+
+- 对于Field，取其字段名
+- 对于Method，如果是setter方法，取其set的属性名，比如setIp，那么取ip作为key
 
 ### xml注入
 
@@ -57,9 +62,9 @@ public class Reporter {
 ```java
 @Test
 public void xml() {
-	ConfSource confSource = new XMLConfSource("etc/test.xml");
+	Source source = new XMLSource("etc/test.xml");
 	Injecter injecter = new Injecter();
-	BeanContainer beanContainer = injecter.enbaleConf().basePackage("xml").source(confSource).inject();
+	BeanContainer beanContainer = injecter.enbaleConf().basePackage("xml").source(source).inject();
 	Reporter reporter = beanContainer.get(Reporter.class);
 	System.out.println(reporter);
 }
@@ -120,6 +125,71 @@ public void getByName() {
 	teacher.printStudent();
 }
 ```
+
+## json
+
+配置文件:
+
+```json
+{
+  "ip": "192.168.0.235",
+  "port": 8080,
+  "version": 1.0,
+  "wait_ack": true,
+  "interval": {
+    "enabled": false,
+    "unit": "s",
+    "value": 10
+  },
+  "msisdns": ["1368392", "12334123"],
+  "loc_ids": [22343, 34211, 2333]
+}
+```
+
+Java类:
+
+```java
+@Component
+public class JsonHolder {
+    private String ip;
+    @Value
+    private int port;
+    @Value
+    private double version;
+    @Value(key = "wait_ack")
+    private boolean waitACK;
+    @Value(key = "interval.enabled")
+    private boolean intervalEnabled;
+    @Value(key = "interval.unit")
+    private String intervalUnit;
+    @Value(key = "interval.value")
+    private int intervalValue;
+    @Value
+    private String[] msisdns;
+    @Value(key = "loc_ids")
+    private String[] locIds;
+
+    @Value
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+}
+```
+
+入口:
+
+```java
+@Test
+public void test() throws LoadException {
+	Source source = new JsonSource("etc/conf.json");
+	Injecter injecter = new Injecter();
+	BeanContainer beanContainer = injecter.enbaleConf().basePackage("xml").source(source).inject();
+	JsonHolder holder = beanContainer.get(JsonHolder.class);
+	System.out.println(holder);
+}
+```
+
+
 
 
 

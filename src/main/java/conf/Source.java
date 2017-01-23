@@ -1,5 +1,7 @@
 package conf;
 
+import conf.exception.LoadException;
+
 import java.util.Map;
 
 /**
@@ -7,12 +9,12 @@ import java.util.Map;
  *
  * @author skywalker
  */
-public interface ConfSource {
+public interface Source {
 
     /**
      * 加载配置.
      */
-    void load();
+    void load() throws LoadException;
 
     /**
      * 获取配置中String形式的值.
@@ -43,6 +45,11 @@ public interface ConfSource {
      * 获取配置中String数组形式的值.此方法自定义分隔符的情况下是使用.
      */
     String[] getStringArray(String key, String separator);
+
+    /**
+     * 节点为数组类型的值，比如json配置文件的基本类型数组.
+     */
+    String[] getStringArray(String key);
 
     /**
      * 以{@link Map}的形式得到所有的配置.

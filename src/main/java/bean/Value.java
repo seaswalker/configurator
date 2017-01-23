@@ -1,5 +1,7 @@
 package bean;
 
+import conf.XmlSource;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -17,10 +19,10 @@ public @interface Value {
     /**
      * 键值，默认*，即获取所有的配置.
      */
-    public String key() default "*";
+    public String key() default "";
 
     /**
-     * 属性值，只对{@link conf.XMLConfSource}有效.
+     * 属性值，只对{@link XmlSource}有效.
      */
     public String attr() default "";
 

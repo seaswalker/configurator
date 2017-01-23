@@ -2,7 +2,8 @@ package inject;
 
 import bean.BeanContainer;
 import bean.Component;
-import conf.ConfSource;
+import conf.Source;
+import conf.exception.LoadException;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
@@ -18,7 +19,7 @@ import java.util.Set;
  */
 public class Injecter {
 
-    private ConfSource source;
+    private Source source;
     //扫描的包
     private String basePackage;
     //是否启用配置注入
@@ -28,12 +29,12 @@ public class Injecter {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
-     * 设置配置来源{@link ConfSource}.
+     * 设置配置来源{@link Source}.
      *
-     * @param source {@linkplain ConfSource}
+     * @param source {@linkplain Source}
      * @return {@link Injecter}
      */
-    public Injecter source(ConfSource source) {
+    public Injecter source(Source source) throws LoadException {
         this.source = source;
         source.load();
         return this;

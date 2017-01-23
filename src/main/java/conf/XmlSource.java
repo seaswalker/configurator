@@ -1,5 +1,6 @@
 package conf;
 
+import conf.exception.LoadException;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -10,9 +11,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
  *
  * @author skywalker
  */
-public class XMLConfSource extends AbstractConfSource {
+public class XmlSource extends AbstractTreeBasedSource {
 
-    public XMLConfSource(String path) {
+    public XmlSource(String path) {
         super(path);
     }
 
@@ -20,7 +21,7 @@ public class XMLConfSource extends AbstractConfSource {
      * 解析指定的配置文件.
      */
     @Override
-    public void load() {
+    public void load() throws LoadException {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
@@ -28,7 +29,7 @@ public class XMLConfSource extends AbstractConfSource {
             Element root = document.getDocumentElement();
             resolve(root);
         } catch (Exception e) {
-            logger.error("{} parse failed.", path, e);
+            throw new LoadException(e);
         }
     }
 
@@ -124,6 +125,7 @@ public class XMLConfSource extends AbstractConfSource {
     /**
      * 获取配置中String数组形式的值.此方法在同一级下的同名标签使用.
      */
+    @Override
     public String[] getStringArray(String key) {
         return holder.get(key).split(holder.getMultiSeparator());
     }
