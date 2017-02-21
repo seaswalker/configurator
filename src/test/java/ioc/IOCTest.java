@@ -1,9 +1,12 @@
 package ioc;
 
 import bean.BeanContainer;
+import bean.Component;
 import inject.Injecter;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.concurrent.*;
 
 /**
  * 测试IOC功能.
@@ -55,6 +58,25 @@ public class IOCTest {
         Student s1 = (Student) container.get("student");
         Student s2 = (Student) container.get("student");
         Assert.assertTrue(s1 != s2);
+    }
+
+    @Test
+    public void annotation() throws ClassNotFoundException {
+        Class clazz = Class.forName("ioc.ChinaStudent");
+        Component component = (Component) clazz.getAnnotation(Component.class);
+        System.out.println(component);
+    }
+
+    @Test
+    public void threadSafe() throws ExecutionException, InterruptedException {
+        Injecter injecter = new Injecter();
+        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+        ExecutorService service = Executors.newFixedThreadPool(2);
+        Callable<Student> task = () -> container.get(Student.class);
+        Future<Student> s1 = service.submit(task);
+        Future<Student> s2 = service.submit(task);
+        service.shutdown();
+        Assert.assertTrue(s1.get() == s2.get());
     }
 
 }

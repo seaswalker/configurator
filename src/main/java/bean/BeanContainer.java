@@ -8,6 +8,7 @@ import org.reflections.ReflectionUtils;
 import javax.annotation.Resource;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -25,6 +26,7 @@ public final class BeanContainer {
     private final boolean isConfEnabled;
     //是否启用依赖注入
     private final boolean isIocEnabled;
+    private final Object monitor = new Object();
 
     public BeanContainer(Source source, boolean isConfEnabled, boolean isIocEnabled) {
         this.source = source;
@@ -40,24 +42,26 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果注册失败
      */
     public void register(Class beanClass) {
-        if (classMap.containsKey(beanClass)) {
-            throw new IllegalStateException("Class '" + beanClass.getName() + "' has been registered already.");
+        synchronized (monitor) {
+            if (classMap.containsKey(beanClass)) {
+                throw new IllegalStateException("Class '" + beanClass.getName() + "' has been registered already.");
+            }
+            Component component = (Component) beanClass.getAnnotation(Component.class);
+            if (component == null) {
+                throw new IllegalStateException("Class '" + beanClass.getName() + "' must be marked by @Component.");
+            }
+            String beanName = component.name();
+            Scope scope = component.scope();
+            if (StringUtils.isEmpty(beanName)) {
+                beanName = getBeanName(beanClass);
+            }
+            if (nameMap.containsKey(beanName)) {
+                throw new IllegalStateException("Bean name '" + beanName + "' has been registered already.");
+            }
+            BeanWrapper beanWrapper = newBeanWrapper(beanName, scope, beanClass);
+            nameMap.put(beanName, beanWrapper);
+            classMap.put(beanClass, beanWrapper);
         }
-        Component component = (Component) beanClass.getAnnotation(Component.class);
-        if (component == null) {
-            throw new IllegalStateException("Class '" + beanClass.getName() + "' must be marked by @Component.");
-        }
-        String beanName = component.name();
-        Scope scope = component.scope();
-        if (StringUtils.isEmpty(beanName)) {
-            beanName = getBeanName(beanClass);
-        }
-        if (nameMap.containsKey(beanName)) {
-            throw new IllegalStateException("Bean name '" + beanName + "' has been registered already.");
-        }
-        BeanWrapper beanWrapper = newBeanWrapper(beanName, scope, beanClass);
-        nameMap.put(beanName, beanWrapper);
-        classMap.put(beanClass, beanWrapper);
     }
 
     /**
@@ -66,14 +70,16 @@ public final class BeanContainer {
      * @return {@link Object}
      */
     public Object get(String beanName) {
-        BeanWrapper wrapper = nameMap.get(beanName);
         Object result = null;
-        if (wrapper != null) {
-            result = wrapper.getTarget();
-            if (result == null || wrapper.getScope() == Scope.PROTOTYPE) {
-                result = createBean(wrapper.getTargetClass());
-                if (result != null && wrapper.getScope() == Scope.SINGLETOM) {
-                    wrapper.setTarget(result);
+        synchronized (monitor) {
+            BeanWrapper wrapper = nameMap.get(beanName);
+            if (wrapper != null) {
+                result = wrapper.getTarget();
+                if (result == null || wrapper.getScope() == Scope.PROTOTYPE) {
+                    result = createBean(wrapper.getTargetClass());
+                    if (result != null && wrapper.getScope() == Scope.SINGLETOM) {
+                        wrapper.setTarget(result);
+                    }
                 }
             }
         }
@@ -88,22 +94,24 @@ public final class BeanContainer {
     public <T> T get(Class<T> beanClass) {
         List<BeanWrapper> candidates = new ArrayList<>();
         T result = null;
-        for (Map.Entry<Class, BeanWrapper> entry : classMap.entrySet()) {
-            if (beanClass.isAssignableFrom(entry.getKey())) {
-                candidates.add(entry.getValue());
+        synchronized (monitor) {
+            for (Map.Entry<Class, BeanWrapper> entry : classMap.entrySet()) {
+                if (beanClass.isAssignableFrom(entry.getKey())) {
+                    candidates.add(entry.getValue());
+                }
             }
-        }
-        int size = candidates.size();
-        if (size > 1) {
-            throw new IllegalStateException("Given bean class has one more candidates: " + getCandidatesInfo(candidates) + ".");
-        }
-        if (size == 1) {
-            BeanWrapper beanWrapper = candidates.get(0);
-            result = (T) beanWrapper.getTarget();
-            if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
-                result = (T) createBean(beanWrapper.getTargetClass());
-                if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
-                    beanWrapper.setTarget(result);
+            int size = candidates.size();
+            if (size > 1) {
+                throw new IllegalStateException("Given bean class has one more candidates: " + getCandidatesInfo(candidates) + ".");
+            }
+            if (size == 1) {
+                BeanWrapper beanWrapper = candidates.get(0);
+                result = (T) beanWrapper.getTarget();
+                if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
+                    result = (T) createBean(beanWrapper.getTargetClass());
+                    if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
+                        beanWrapper.setTarget(result);
+                    }
                 }
             }
         }

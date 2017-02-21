@@ -82,7 +82,7 @@ public class Injecter {
         Reflections reflections = new Reflections(new ConfigurationBuilder().
                 setUrls(ClasspathHelper.forPackage(basePackage)));
         logger.info("Start scan package: {}.", basePackage);
-        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Component.class);
+        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Component.class, true);
         logger.info("Scan package {} finished.", basePackage);
         BeanContainer container = new BeanContainer(source, isConfEnabled, isIocEnabled);
         classes.forEach(c -> container.register(c));
