@@ -18,7 +18,7 @@ public class PropertiesTest {
     public void properties() throws LoadException {
         Source confSource = new PropertiesSource("etc/db.properties");
         Injecter injecter = new Injecter();
-        BeanContainer beanContainer = injecter.enbaleConf().basePackage("properties").source(confSource).inject();
+        BeanContainer beanContainer = injecter.basePackage("properties").source(confSource).inject();
         DB db = beanContainer.get(DB.class);
         System.out.println(db);
     }

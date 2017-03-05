@@ -1,7 +1,7 @@
 package xml;
 
-import bean.Component;
-import bean.Value;
+import bean.annotation.Component;
+import bean.annotation.Value;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,16 +9,16 @@ import java.util.HashMap;
 @Component
 public class Reporter {
 
-    @Value(key = "area")
+    @Value(key = "areab", defaultValue = "1100")
     private int area;
     private int ranking;
-    @Value(key = "phone")
+    @Value(key = "china.phone")
     private int phone;
-    @Value(key = "domain")
+    @Value(key = "china.domain")
     private String domain;
-    @Value(key = "leaders.leader")
+    @Value(key = "china.leaders.leader")
     private String[] leaders;
-    @Value(key = "leaders", attr = "count")
+    @Value(key = "china.leaders#count")
     private int leaderCount;
     private HashMap<Object, String> all;
 
@@ -34,7 +34,7 @@ public class Reporter {
         return ranking;
     }
 
-    @Value(key = "area", attr = "ranking")
+    @Value(key = "china.area#ranking")
     public void setRanking(int ranking) {
         this.ranking = ranking;
     }

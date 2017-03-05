@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  *
  * @author skywalker
  */
-public class JsonSource extends AbstractSource {
+public class JsonSource extends AbstractPathBasedSource {
 
     private JSONObject json;
 

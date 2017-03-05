@@ -28,9 +28,12 @@ public class PropertiesSource extends AbstractTreeBasedSource {
         }
     }
 
+    /**
+     * 获取配置中String形式的值.
+     */
     @Override
-    public String[] getStringArray(String key) {
-        throw new UnsupportedOperationException();
+    public String get(String key) {
+        return holder.get(key);
     }
 
 }

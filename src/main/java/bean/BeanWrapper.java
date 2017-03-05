@@ -1,5 +1,7 @@
 package bean;
 
+import bean.annotation.Component;
+
 /**
  * {@link Component}包装，提供{@link Scope}逻辑支持.
  *

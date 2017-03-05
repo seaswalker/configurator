@@ -13,8 +13,18 @@ public interface Source {
 
     /**
      * 加载配置.
+     *
+     * @throws LoadException 如果加载失败
      */
     void load() throws LoadException;
+
+    /**
+     * 配置中是否存在指定的key值.
+     *
+     * @param key key
+     * @return true，如果存在
+     */
+    boolean contains(String key);
 
     /**
      * 获取配置中String形式的值.

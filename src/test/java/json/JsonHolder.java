@@ -1,7 +1,7 @@
 package json;
 
-import bean.Component;
-import bean.Value;
+import bean.annotation.Component;
+import bean.annotation.Value;
 
 import java.util.Arrays;
 

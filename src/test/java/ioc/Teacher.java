@@ -2,9 +2,7 @@ package ioc;
 
 import bean.BeanContainer;
 import bean.BeanContainerAware;
-import bean.Component;
-
-import javax.annotation.Resource;
+import bean.annotation.Component;
 
 /**
  * 老师.
@@ -14,8 +12,11 @@ import javax.annotation.Resource;
 @Component
 public class Teacher implements BeanContainerAware {
 
-    @Resource
     private Student student;
+
+    public Teacher(Student student) {
+        this.student = student;
+    }
 
     public void printStudent() {
         System.out.println(student);
@@ -25,4 +26,5 @@ public class Teacher implements BeanContainerAware {
     public void setBeanContainer(BeanContainer beanContainer) {
         System.out.println("setBeanContainer调用");
     }
+
 }

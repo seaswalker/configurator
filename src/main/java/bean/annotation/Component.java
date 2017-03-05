@@ -1,4 +1,6 @@
-package bean;
+package bean.annotation;
+
+import bean.Scope;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

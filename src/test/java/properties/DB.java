@@ -1,7 +1,7 @@
 package properties;
 
-import bean.Component;
-import bean.Value;
+import bean.annotation.Component;
+import bean.annotation.Value;
 
 @Component
 public class DB {

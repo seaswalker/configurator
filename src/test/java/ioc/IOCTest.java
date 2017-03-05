@@ -1,7 +1,12 @@
 package ioc;
 
 import bean.BeanContainer;
-import bean.Component;
+import bean.annotation.Component;
+import conf.CompositeSource;
+import conf.JsonSource;
+import conf.PropertiesSource;
+import conf.XmlSource;
+import conf.exception.LoadException;
 import inject.Injecter;
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,9 +24,12 @@ public class IOCTest {
      * 测试根据Bean名称获取.
      */
     @Test
-    public void getByName() {
-        Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+    public void getByName() throws LoadException {
+        CompositeSource source = new CompositeSource();
+        source.registerSource(new JsonSource("etc/conf.json"), new PropertiesSource("etc/db.properties"),
+                new XmlSource("etc/test.xml"));
+        Injecter injecter = new Injecter().source(source);
+        BeanContainer container = injecter.basePackage("ioc").inject();
         Teacher teacher = (Teacher) container.get("teacher");
         teacher.printStudent();
     }
@@ -32,7 +40,7 @@ public class IOCTest {
     @Test(expected = NullPointerException.class)
     public void getByNameNull() {
         Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+        BeanContainer container = injecter.basePackage("ioc").inject();
         Teacher teacher = (Teacher) container.get("tea");
         teacher.printStudent();
     }
@@ -43,7 +51,7 @@ public class IOCTest {
     @Test(expected = IllegalStateException.class)
     public void nameComplict() {
         Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+        BeanContainer container = injecter.basePackage("ioc").inject();
         Teacher teacher = (Teacher) container.get("teacher");
         teacher.printStudent();
     }
@@ -54,7 +62,7 @@ public class IOCTest {
     @Test
     public void scope() {
         Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+        BeanContainer container = injecter.basePackage("ioc").inject();
         Student s1 = (Student) container.get("student");
         Student s2 = (Student) container.get("student");
         Assert.assertTrue(s1 != s2);
@@ -70,7 +78,7 @@ public class IOCTest {
     @Test
     public void threadSafe() throws ExecutionException, InterruptedException {
         Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").enableIoc().inject();
+        BeanContainer container = injecter.basePackage("ioc").inject();
         ExecutorService service = Executors.newFixedThreadPool(2);
         Callable<Student> task = () -> container.get(Student.class);
         Future<Student> s1 = service.submit(task);

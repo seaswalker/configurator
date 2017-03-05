@@ -1,6 +1,6 @@
 package ioc;
 
-import bean.Component;
+import bean.annotation.Component;
 import bean.Scope;
 
 /**

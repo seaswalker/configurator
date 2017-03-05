@@ -1,7 +1,10 @@
 package bean;
 
+import bean.annotation.Component;
+import bean.annotation.Init;
+import bean.annotation.Value;
+import bean.converters.*;
 import conf.Source;
-import conf.XmlSource;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.ReflectionUtils;
 
@@ -18,20 +21,33 @@ import java.util.stream.Collectors;
 public final class BeanContainer {
 
     private final Source source;
-    private final boolean isXMLBased;
+    private final boolean isConfEnabled;
     private final Map<String, BeanWrapper> nameMap = new HashMap<>();
     private final Map<Class, BeanWrapper> classMap = new HashMap<>();
-    //是否启用配置注入
-    private final boolean isConfEnabled;
-    //是否启用依赖注入
-    private final boolean isIocEnabled;
+    private final List<TypeConverter> converters = new LinkedList<>();
     private final Object monitor = new Object();
 
-    public BeanContainer(Source source, boolean isConfEnabled, boolean isIocEnabled) {
+    public BeanContainer(Source source) {
         this.source = source;
-        this.isXMLBased = (source instanceof XmlSource);
-        this.isConfEnabled = isConfEnabled;
-        this.isIocEnabled = isIocEnabled;
+        this.isConfEnabled = (source != null);
+        registerTypeConvertersInternal();
+    }
+
+    /**
+     * 注册默认的{@link TypeConverter}.
+     */
+    private void registerTypeConvertersInternal() {
+        registerTypeConverters(new StringConverter(), new IntConverter(), new BooleanConverter(), new ByteConverter(),
+                new DoubleConverter(), new FloatConverter(), new LongConverter(), new ShortConverter());
+    }
+
+    /**
+     * 注册{@link TypeConverter}.
+     *
+     * @param converters {@linkplain TypeConverter}数组
+     */
+    public void registerTypeConverters(TypeConverter... converters) {
+        this.converters.addAll(Arrays.asList(converters));
     }
 
     /**
@@ -132,18 +148,85 @@ public final class BeanContainer {
     private Object createBean(Class beanClass) {
         Object instance = newInstance(beanClass);
         if (instance != null) {
-            if (isConfEnabled) {
-                injectConfs(instance, beanClass);
-            }
-            if (isIocEnabled) {
-                injectDependencies(instance, beanClass);
-            }
+            injectConfs(instance, beanClass);
+            injectDependencies(instance, beanClass);
             if (instance instanceof BeanContainerAware) {
                 BeanContainerAware aware = (BeanContainerAware) instance;
                 aware.setBeanContainer(this);
             }
+            invokeInitMethodsIfNecessary(beanClass, instance);
         }
         return instance;
+    }
+
+    /**
+     * 如果bean中定义了{@link bean.annotation.Init}方法，调用之.
+     *
+     * @param beanClass {@link Class} bean的类型
+     * @param instance  bean实例
+     */
+    private void invokeInitMethodsIfNecessary(Class beanClass, Object instance) {
+        Set<Method> methods = ReflectionUtils.getMethods(beanClass, ReflectionUtils.withAnnotation(Init.class));
+        if (methods.size() > 0) {
+            List<Method> sorted = new ArrayList<>(methods);
+            //倒序排列
+            sorted.sort((o1, o2) -> o2.getAnnotation(Init.class).order() - o1.getAnnotation(Init.class).order());
+            sorted.forEach(method -> {
+                Parameter[] parameters = method.getParameters();
+                Object[] args = parameters.length > 0 ? resolveArgs(parameters) : new Object[0];
+                invokeMethod(method, instance, args);
+            });
+        }
+    }
+
+    /**
+     * 根据方法的参数列表解析得到相应的参数.
+     * <ul>
+     * <li>如果参数被{@link Value}标注，那么进行配置注入.</li>
+     * <li>是基本类型，抛出{@link IllegalStateException}.</li>
+     * <li>根据类型去容器查找.</li>
+     * <li>最终还是没有找到，抛出{@link IllegalStateException}.</li>
+     * </ul>
+     *
+     * @param parameters 参数列表，长度大于零
+     * @return 解析得到参数数组
+     */
+    private Object[] resolveArgs(Parameter[] parameters) {
+        int i = 0, l = parameters.length;
+        Object[] result = new Object[l];
+        for (; i < l; i++) {
+            Parameter parameter = parameters[i];
+            Object value = resolveArg(parameter);
+            if (value == null) {
+                throw new IllegalStateException("Can't find eligible value for paramter: " + parameter + ".");
+            }
+            result[i] = resolveArg(parameter);
+        }
+        return result;
+    }
+
+    /**
+     * 参数解析.
+     *
+     * @param parameter {@link Parameter}
+     * @return 参数值
+     * @see #resolveArgs(Parameter[])
+     */
+    private Object resolveArg(Parameter parameter) {
+        Value value = parameter.getAnnotation(Value.class);
+        Object result;
+        if (value != null) {
+            //jdk1.8 javac -parameters参数
+            String name = (parameter.isNamePresent() ? parameter.getName() : null);
+            result = resolveConfByValue(parameter, name, parameter.getType(), parameter.getParameterizedType());
+        } else {
+            Class type = parameter.getType();
+            if (type.isPrimitive()) {
+                throw new IllegalStateException("Can't inject to primitive type: " + parameter + ".");
+            }
+            result = get(type);
+        }
+        return result;
     }
 
     /**
@@ -169,15 +252,31 @@ public final class BeanContainer {
 
     /**
      * 使用给定的{@linkplain Class}的无参构造器构造一个对象.
+     *
+     * @param beanClass {@link Class} bean类型
+     * @throws IllegalStateException 如果构造失败
      */
     private Object newInstance(Class beanClass) {
         Object instance = null;
         try {
-            instance = beanClass.newInstance();
+            Constructor[] constructors = beanClass.getConstructors();
+            int length = constructors.length;
+            if (length == 0) {
+                throw new IllegalStateException("There are no public constructors in " + beanClass.getName() + ".");
+            }
+            if (length > 1) {
+                throw new IllegalStateException("There are more than one public constructors in " + beanClass.getName() + ".");
+            }
+            Constructor constructor = constructors[0];
+            Parameter[] parameters = constructor.getParameters();
+            Object[] args = resolveArgs(parameters);
+            instance = constructor.newInstance(args);
         } catch (InstantiationException e) {
             throw new IllegalStateException("Construct bean failed, maybe there is no default constructor.", e);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Construct bean failed, maybe there is no public constructor.", e);
+        } catch (InvocationTargetException e) {
+            throw new IllegalStateException("Exception occurred when constructing bean " + beanClass.getName() + ".", e);
         }
         return instance;
     }
@@ -239,70 +338,68 @@ public final class BeanContainer {
 
     /**
      * 根据{@link Value}得到配置的值.
+     *
+     * @param object {@link AnnotatedElement} 被{@link Value}标注的元素
+     * @param name   如果{@link Value#key()}没有设置，默认用以进行查找的名字，比如{@link Field}的名称
+     * @param clazz  object的真实类型
+     * @param type   object的泛型类型
      */
-    private Object resolveConfByValue(AccessibleObject object, String name, Class clazz, Type type) {
+    private Object resolveConfByValue(AnnotatedElement object, String name, Class clazz, Type type) {
+        if (!isConfEnabled) {
+            throw new IllegalStateException("No configuration file providerd.");
+        }
         Object result;
         Value value = object.getAnnotation(Value.class);
-        String key = value.key(), attr = null;
+        String key = value.key();
         if (StringUtils.isEmpty(key)) {
             key = name;
             if (StringUtils.isEmpty(key)) {
-                throw new IllegalStateException("Key must be confirmed.");
+                throw new IllegalStateException("Key must be confirmed: " + object + ".");
             }
-        }
-        if (isXMLBased) {
-            attr = value.attr();
         }
         if (isRequireAll(key)) {
             if (!isEligibleMap(clazz, type)) {
-                throw new IllegalStateException("Inject all configurations for " + object + " failed, type Map<String,String> required.");
+                throw new IllegalStateException("Inject all configurations for " + object +
+                        " failed, type Map<String,String> required.");
             }
             result = source.getAll();
         } else {
-            if (clazz == String.class) {
-                if (isRequireAttr(attr)) {
-                    result = XmlSource.class.cast(source).getAttribute(key, attr);
-                } else {
-                    result = source.get(key);
+            if (!source.contains(key)) {
+                String defaultValue = value.defaultValue();
+                if (StringUtils.isEmpty(defaultValue)) {
+                    throw new IllegalStateException("No key: " + key + " and defaultValue found.");
                 }
-            } else if (clazz == int.class) {
-                if (isRequireAttr(attr)) {
-                    result = XmlSource.class.cast(source).getAttributeAsInt(key, attr);
-                } else {
-                    result = source.getInt(key);
-                }
-            } else if (clazz == long.class) {
-                if (isRequireAttr(attr)) {
-                    result = XmlSource.class.cast(source).getAttributeAsLong(key, attr);
-                } else {
-                    result = source.getLong(key);
-                }
-            } else if (clazz == boolean.class) {
-                if (isRequireAttr(attr)) {
-                    result = XmlSource.class.cast(source).getAttributeAsBoolean(key, attr);
-                } else {
-                    result = source.getBoolean(key);
-                }
-            } else if (clazz == double.class) {
-                if (isRequireAttr(attr)) {
-                    result = XmlSource.class.cast(source).getAttributeAsDouble(key, attr);
-                } else {
-                    result = source.getDouble(key);
-                }
+                result = convertTo(defaultValue, clazz);
             } else if (clazz == String[].class) {
                 String separator = value.separator();
-                if (isRequireAttr(attr)) {
-                    checkSeparator(separator, object);
-                    result = XmlSource.class.cast(source).getAttributeAsStringArray(key, attr, separator);
-                } else {
-                    result = StringUtils.isEmpty(separator) ? source.getStringArray(key) :
-                            source.getStringArray(key, separator);
-                }
+                result = StringUtils.isEmpty(separator) ? source.getStringArray(key) :
+                        source.getStringArray(key, separator);
             } else {
-                throw new IllegalStateException("Unsupported target type " + clazz.getSimpleName() + " for AccessibleObject " + object + ".");
+                result = convertTo(source.get(key), clazz);
             }
         }
         return result;
+    }
+
+    /**
+     * 将给定的值转换为指定的类型.
+     *
+     * @param value        待转换的值
+     * @param requiredType {@linkplain Class} 需要的类型
+     * @return 转换后的值
+     * @throws IllegalStateException 如果没有合适的{@link TypeConverter}可用
+     */
+    private Object convertTo(String value, Class requiredType) {
+        for (int i = 0, l = converters.size(); i < l; i++) {
+            TypeConverter converter = converters.get(i);
+            if (converter.support(requiredType)) {
+                Object result = converter.convert(value);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        throw new IllegalStateException("No eligible TypeConverter found for type: " + requiredType.getName() + ".");
     }
 
     /**
@@ -310,7 +407,7 @@ public final class BeanContainer {
      *
      * @throws IllegalStateException 如果不合法
      */
-    private void checkSeparator(String separator, AccessibleObject object) {
+    private void checkSeparator(String separator, AnnotatedElement object) {
         if (StringUtils.isEmpty(separator)) {
             throw new IllegalStateException("Must specify separator for String array, target: " + object + ".");
         }
@@ -321,13 +418,6 @@ public final class BeanContainer {
      */
     private boolean isRequireAll(String key) {
         return (key.equals("*"));
-    }
-
-    /**
-     * 判断是否需要注入属性，仅对{@link XmlSource}有效.
-     */
-    private boolean isRequireAttr(String attr) {
-        return (isXMLBased && StringUtils.isNotEmpty(attr));
     }
 
     /**
@@ -388,7 +478,8 @@ public final class BeanContainer {
             if (type != Object.class && StringUtils.isEmpty(name)) {
                 //by type
                 if (!fieldClass.isAssignableFrom(type)) {
-                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " + fieldClass.getName());
+                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
+                            fieldClass.getName());
                 }
                 dependency = get(type);
             } else {
@@ -397,7 +488,8 @@ public final class BeanContainer {
                 dependency = get(fieldName);
                 if (dependency == null && type != Object.class) {
                     if (!fieldClass.isAssignableFrom(type)) {
-                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " + fieldClass.getName());
+                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
+                                fieldClass.getName());
                     }
                     dependency = get(type);
                 }
@@ -447,7 +539,8 @@ public final class BeanContainer {
             if (type != Object.class && StringUtils.isEmpty(resourceName)) {
                 //by type
                 if (!parameterClass.isAssignableFrom(type)) {
-                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " + parameterClass.getName());
+                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
+                            parameterClass.getName());
                 }
                 dependency = get(type);
             } else {
@@ -456,7 +549,8 @@ public final class BeanContainer {
                 dependency = get(name);
                 if (dependency == null && type != Object.class) {
                     if (!parameterClass.isAssignableFrom(type)) {
-                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " + parameterClass.getName());
+                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
+                                parameterClass.getName());
                     }
                     dependency = get(type);
                 }
@@ -479,7 +573,7 @@ public final class BeanContainer {
             method.setAccessible(true);
             method.invoke(instance, params);
         } catch (Exception e) {
-            throw new IllegalStateException("Inject to method '" + method + "' failed.", e);
+            throw new IllegalStateException("Invoke method '" + method + "' failed.", e);
         }
     }
 

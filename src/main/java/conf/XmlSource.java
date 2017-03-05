@@ -13,6 +13,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
  */
 public class XmlSource extends AbstractTreeBasedSource {
 
+    /** 属性key分隔符 **/
+    private static final String metadataSeparator = "#";
+
     public XmlSource(String path) {
         super(path);
     }
@@ -40,10 +43,11 @@ public class XmlSource extends AbstractTreeBasedSource {
      */
     private void resolve(Element root) {
         NodeList list = root.getChildNodes();
+        String base = root.getNodeName() + ".";
         for (int i = 0, l = list.getLength(); i < l; i++) {
             Node node = list.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
-                doResolve((Element) node, newKey(node, ""));
+                doResolve((Element) node, newKey(node, base));
             }
         }
     }
@@ -122,54 +126,28 @@ public class XmlSource extends AbstractTreeBasedSource {
         return (base + node.getNodeName() + ".");
     }
 
+    @Override
+    public String get(String key) {
+        String[] parts = key.split(metadataSeparator);
+        int length = parts.length;
+        String result;
+        if (length > 2) {
+            throw new IllegalStateException("Malformed key: " + key + ", example: key#attr.");
+        }
+        if (length == 1) {
+            result = holder.get(key);
+        } else {
+            result = holder.getMetaData(parts[0], parts[1]);
+        }
+        return result;
+    }
+
     /**
      * 获取配置中String数组形式的值.此方法在同一级下的同名标签使用.
      */
     @Override
     public String[] getStringArray(String key) {
         return holder.get(key).split(holder.getMultiSeparator());
-    }
-
-    /**
-     * 获取属性值.
-     */
-    public String getAttribute(String key, String attr) {
-        return holder.getMetaData(key, attr);
-    }
-
-    /**
-     * 获取int形式的属性值.
-     */
-    public int getAttributeAsInt(String key, String attr) {
-        return Integer.parseInt(getAttribute(key, attr));
-    }
-
-    /**
-     * 获取long形式的属性值.
-     */
-    public long getAttributeAsLong(String key, String attr) {
-        return Long.parseLong(getAttribute(key, attr));
-    }
-
-    /**
-     * 获取boolean形式的属性值.
-     */
-    public boolean getAttributeAsBoolean(String key, String attr) {
-        return Boolean.parseBoolean(getAttribute(key, attr));
-    }
-
-    /**
-     * 获取doule形式的值.
-     */
-    public double getAttributeAsDouble(String key, String value) {
-        return Double.parseDouble(getAttribute(key, value));
-    }
-
-    /**
-     * 获取String数组形式的值.
-     */
-    public String[] getAttributeAsStringArray(String key, String attr, String separator) {
-        return getAttribute(key, attr).split(separator);
     }
 
 }

@@ -87,6 +87,9 @@ public final class TrieTree {
     public String get(String key) {
         checkKey(key);
         Node node = seekTo(key);
+        if (node == null) {
+            return null;
+        }
         if (!isLeaf(node)) {
             throw new IllegalStateException("Get() method supports leaf node only.");
         }
