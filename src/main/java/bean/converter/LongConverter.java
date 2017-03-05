@@ -1,4 +1,4 @@
-package bean.converters;
+package bean.converter;
 
 /**
  * long转换器.

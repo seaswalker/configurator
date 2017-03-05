@@ -1,4 +1,4 @@
-package bean.converters;
+package bean.converter;
 
 /**
  * byte转换器.

@@ -3,7 +3,7 @@ package bean;
 import bean.annotation.Component;
 import bean.annotation.Init;
 import bean.annotation.Value;
-import bean.converters.*;
+import bean.converter.*;
 import conf.Source;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.ReflectionUtils;

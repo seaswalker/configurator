@@ -1,4 +1,4 @@
-package bean.converters;
+package bean.converter;
 
 /**
  * {@link TypeConverter}空实现，直接返回原值.
