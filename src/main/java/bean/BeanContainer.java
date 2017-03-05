@@ -39,6 +39,7 @@ public final class BeanContainer {
     private void registerTypeConvertersInternal() {
         registerTypeConverters(new StringConverter(), new IntConverter(), new BooleanConverter(), new ByteConverter(),
                 new DoubleConverter(), new FloatConverter(), new LongConverter(), new ShortConverter());
+        registerTypeConverters(getBeansWithType(TypeConverter.class).toArray(new TypeConverter[0]));
     }
 
     /**
