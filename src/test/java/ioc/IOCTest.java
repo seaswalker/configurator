@@ -11,6 +11,7 @@ import inject.Injecter;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -85,6 +86,20 @@ public class IOCTest {
         Future<Student> s2 = service.submit(task);
         service.shutdown();
         Assert.assertTrue(s1.get() == s2.get());
+    }
+
+    /**
+     * 测试{@link BeanContainer#getBeansWithType(Class)}.
+     */
+    @Test
+    public void getWithType() throws LoadException {
+        CompositeSource source = new CompositeSource();
+        source.registerSource(new JsonSource("etc/conf.json"), new PropertiesSource("etc/db.properties"),
+                new XmlSource("etc/test.xml"));
+        Injecter injecter = new Injecter().source(source);
+        BeanContainer container = injecter.basePackage("ioc").inject();
+        List<Student> students = container.getBeansWithType(Student.class);
+        System.out.println(students);
     }
 
 }

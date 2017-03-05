@@ -57,6 +57,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果注册失败
      */
     public void register(Class beanClass) {
+        Objects.requireNonNull(beanClass);
         synchronized (monitor) {
             if (classMap.containsKey(beanClass)) {
                 throw new IllegalStateException("Class '" + beanClass.getName() + "' has been registered already.");
@@ -83,19 +84,17 @@ public final class BeanContainer {
      * 根据bean名称寻找bean实例，lazy-init.
      *
      * @return {@link Object}
+     * @throws IllegalArgumentException 如果参数为null或empty
      */
     public Object get(String beanName) {
+        if (StringUtils.isEmpty(beanName)) {
+            throw new IllegalArgumentException("Param beanName can't be null or empty.");
+        }
         Object result = null;
         synchronized (monitor) {
             BeanWrapper wrapper = nameMap.get(beanName);
             if (wrapper != null) {
-                result = wrapper.getTarget();
-                if (result == null || wrapper.getScope() == Scope.PROTOTYPE) {
-                    result = createBean(wrapper.getTargetClass());
-                    if (result != null && wrapper.getScope() == Scope.SINGLETOM) {
-                        wrapper.setTarget(result);
-                    }
-                }
+                result = loadBean(wrapper);
             }
         }
         return result;
@@ -107,6 +106,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果发现多个候选者
      */
     public <T> T get(Class<T> beanClass) {
+        Objects.requireNonNull(beanClass);
         List<BeanWrapper> candidates = new ArrayList<>();
         T result = null;
         synchronized (monitor) {
@@ -121,13 +121,45 @@ public final class BeanContainer {
             }
             if (size == 1) {
                 BeanWrapper beanWrapper = candidates.get(0);
-                result = (T) beanWrapper.getTarget();
-                if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
-                    result = (T) createBean(beanWrapper.getTargetClass());
-                    if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
-                        beanWrapper.setTarget(result);
-                    }
+                result = (T) loadBean(beanWrapper);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获得所有clazz类型的bean.
+     *
+     * @param clazz {@link Class} 类型
+     * @param <T>   clazz的真实类型
+     * @return {@link List}, 如果没有找到任何bean，那么返回空链表，而不是null
+     */
+    public <T> List<T> getBeansWithType(Class<T> clazz) {
+        Objects.requireNonNull(clazz);
+        List<T> beans = new LinkedList<T>();
+        synchronized (monitor) {
+            classMap.forEach((key, value) -> {
+                if (clazz.isAssignableFrom(key)) {
+                    beans.add((T) loadBean(value));
                 }
+            });
+        }
+        return beans;
+    }
+
+    /**
+     * 初始化{@link BeanWrapper}.注意:
+     * <p>此方法一定是在持有锁的前提下执行的.</p>
+     *
+     * @param beanWrapper {@linkplain BeanWrapper} 非空
+     * @return 初始化的bean实例
+     */
+    private Object loadBean(BeanWrapper beanWrapper) {
+        Object result = beanWrapper.getTarget();
+        if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
+            result = createBean(beanWrapper.getTargetClass());
+            if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
+                beanWrapper.setTarget(result);
             }
         }
         return result;
