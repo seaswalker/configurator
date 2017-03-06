@@ -3,8 +3,7 @@ package bean.converter;
 import bean.BeanContainer;
 
 /**
- * 类型转换器.Users可实现此接口且通过{@link BeanContainer#registerTypeConverters(TypeConverter...)}方法
- * 将其注册到容器中以实现自定义类型转换.
+ * 类型转换器.Users可实现此接口将其注册到容器中以实现自定义类型转换.
  *
  * @author skywalker
  */

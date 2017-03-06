@@ -24,7 +24,6 @@ public final class BeanContainer {
     private final boolean isConfEnabled;
     private final Map<String, BeanWrapper> nameMap = new HashMap<>();
     private final Map<Class, BeanWrapper> classMap = new HashMap<>();
-    private final List<TypeConverter> converters = new LinkedList<>();
     private final Object monitor = new Object();
 
     public BeanContainer(Source source) {
@@ -37,38 +36,72 @@ public final class BeanContainer {
      * 注册默认的{@link TypeConverter}.
      */
     private void registerTypeConvertersInternal() {
-        registerTypeConverters(new StringConverter(), new IntConverter(), new BooleanConverter(), new ByteConverter(),
-                new DoubleConverter(), new FloatConverter(), new LongConverter(), new ShortConverter());
-        registerTypeConverters(getBeansWithType(TypeConverter.class).toArray(new TypeConverter[0]));
+        register(BooleanConverter.class, Scope.SINGLETOM);
+        register(ByteConverter.class, Scope.SINGLETOM);
+        register(DoubleConverter.class, Scope.SINGLETOM);
+        register(FloatConverter.class, Scope.SINGLETOM);
+        register(IntConverter.class, Scope.SINGLETOM);
+        register(LongConverter.class, Scope.SINGLETOM);
+        register(ShortConverter.class, Scope.SINGLETOM);
+        register(StringConverter.class, Scope.SINGLETOM);
     }
 
     /**
-     * 注册{@link TypeConverter}.
-     *
-     * @param converters {@linkplain TypeConverter}数组
-     */
-    public void registerTypeConverters(TypeConverter... converters) {
-        this.converters.addAll(Arrays.asList(converters));
-    }
-
-    /**
-     * 向Bean容器注册.
+     * 向Bean容器注册.注意:
+     * <p>beanClass上必须有{@link Component}注解.</p>
      *
      * @param beanClass {@linkplain Class}
      * @throws IllegalStateException 如果注册失败
      */
     public void register(Class beanClass) {
         Objects.requireNonNull(beanClass);
+        Component component = (Component) beanClass.getAnnotation(Component.class);
+        if (component == null) {
+            throw new IllegalStateException("Class '" + beanClass.getName() + "' must be marked by @Component.");
+        }
+        String beanName = component.name();
+        Scope scope = component.scope();
+        doRegister(beanClass, scope, beanName);
+    }
+
+    /**
+     * 允许向容器注册未被{@link Component}标注的bean.
+     *
+     * @param beanClass {@link Class}
+     * @param scope     {@link Scope}
+     */
+    public void register(Class beanClass, Scope scope) {
+        Objects.requireNonNull(beanClass);
+        Objects.requireNonNull(scope);
+        doRegister(beanClass, scope, null);
+    }
+
+    /**
+     * 允许向容器注册未被{@link Component}标注的bean.
+     *
+     * @param beanClass {@link Class}
+     * @param scope     {@link Scope}
+     * @param name      bean名称
+     */
+    public void register(Class beanClass, Scope scope, String name) {
+        Objects.requireNonNull(beanClass);
+        Objects.requireNonNull(scope);
+        if (StringUtils.isEmpty(name)) {
+            throw new IllegalArgumentException("Parameter name can't be null or empty.");
+        }
+        doRegister(beanClass, scope, name);
+    }
+
+    /**
+     * 真正的执行注册操作.
+     *
+     * @see #register(Class, Scope, String)
+     */
+    private void doRegister(Class beanClass, Scope scope, String beanName) {
         synchronized (monitor) {
             if (classMap.containsKey(beanClass)) {
                 throw new IllegalStateException("Class '" + beanClass.getName() + "' has been registered already.");
             }
-            Component component = (Component) beanClass.getAnnotation(Component.class);
-            if (component == null) {
-                throw new IllegalStateException("Class '" + beanClass.getName() + "' must be marked by @Component.");
-            }
-            String beanName = component.name();
-            Scope scope = component.scope();
             if (StringUtils.isEmpty(beanName)) {
                 beanName = getBeanName(beanClass);
             }
@@ -231,7 +264,7 @@ public final class BeanContainer {
             Parameter parameter = parameters[i];
             Object value = resolveArg(parameter);
             if (value == null) {
-                throw new IllegalStateException("Can't find eligible value for paramter: " + parameter + ".");
+                throw new IllegalStateException("Can't find eligible value for parameter: " + parameter + ".");
             }
             result[i] = resolveArg(parameter);
         }
@@ -423,6 +456,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果没有合适的{@link TypeConverter}可用
      */
     private Object convertTo(String value, Class requiredType) {
+        List<TypeConverter> converters = getBeansWithType(TypeConverter.class);
         for (int i = 0, l = converters.size(); i < l; i++) {
             TypeConverter converter = converters.get(i);
             if (converter.support(requiredType)) {
