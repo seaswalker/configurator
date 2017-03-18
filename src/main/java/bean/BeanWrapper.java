@@ -13,6 +13,11 @@ public class BeanWrapper {
     private String beanName;
     private Class targetClass;
     private Object target;
+    /**
+     * 是否正在创建对应的bean实例.
+     */
+    private boolean currentlyInCreation = false;
+    //TODO 被构造器依赖?
 
     public Scope getScope() {
         return scope;

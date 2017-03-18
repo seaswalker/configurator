@@ -6,7 +6,6 @@ import bean.annotation.Value;
 import java.util.Arrays;
 import java.util.HashMap;
 
-@Component
 public class Reporter {
 
     @Value(key = "areab", defaultValue = "1100")

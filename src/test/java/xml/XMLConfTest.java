@@ -19,7 +19,7 @@ public class XMLConfTest {
         Source confSource = new XmlSource("etc/test.xml");
         Injecter injecter = new Injecter();
         BeanContainer beanContainer = injecter.basePackage("xml").source(confSource).inject();
-        Reporter reporter = beanContainer.get(Reporter.class);
+        Reporter reporter = beanContainer.get(SubReporter.class);
         System.out.println(reporter);
     }
 

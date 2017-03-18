@@ -1,15 +1,16 @@
 package ioc;
 
-import bean.annotation.Component;
-import bean.Scope;
+import javax.annotation.Resource;
 
 /**
  * 学生.
  *
  * @author skywalker
  */
-@Component(scope = Scope.PROTOTYPE)
-public class Student {
+public abstract class Student {
+
+    @Resource
+    private Teacher teacher;
 
     private String name;
     private int age;
@@ -22,8 +23,10 @@ public class Student {
     @Override
     public String toString() {
         return "Student{" +
-                "name='" + name + '\'' +
+                "teacher=" + teacher +
+                ", name='" + name + '\'' +
                 ", age=" + age +
                 '}';
     }
+
 }

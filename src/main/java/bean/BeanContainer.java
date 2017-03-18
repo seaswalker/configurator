@@ -21,14 +21,17 @@ import java.util.stream.Collectors;
 public final class BeanContainer {
 
     private final Source source;
-    private final boolean isConfEnabled;
     private final Map<String, BeanWrapper> nameMap = new HashMap<>();
     private final Map<Class, BeanWrapper> classMap = new HashMap<>();
     private final Object monitor = new Object();
+    /**
+     * @see inject.Injecter#allowCircularReference(boolean)
+     */
+    private final boolean allowCircularReference;
 
-    public BeanContainer(Source source) {
+    public BeanContainer(Source source, boolean allowCircularReference) {
         this.source = source;
-        this.isConfEnabled = (source != null);
+        this.allowCircularReference = allowCircularReference;
         registerTypeConvertersInternal();
     }
 
@@ -214,7 +217,9 @@ public final class BeanContainer {
     private Object createBean(Class beanClass) {
         Object instance = newInstance(beanClass);
         if (instance != null) {
-            injectConfs(instance, beanClass);
+            if (source != null) {
+                injectConfs(instance, beanClass);
+            }
             injectDependencies(instance, beanClass);
             if (instance instanceof BeanContainerAware) {
                 BeanContainerAware aware = (BeanContainerAware) instance;
@@ -411,9 +416,6 @@ public final class BeanContainer {
      * @param type   object的泛型类型
      */
     private Object resolveConfByValue(AnnotatedElement object, String name, Class clazz, Type type) {
-        if (!isConfEnabled) {
-            throw new IllegalStateException("No configuration file providerd.");
-        }
         Object result;
         Value value = object.getAnnotation(Value.class);
         String key = value.key();
@@ -541,23 +543,17 @@ public final class BeanContainer {
             String name = resource.name();
             Class type = resource.type();
             Class fieldClass = field.getType();
-            Object dependency = null;
+            Object dependency;
             if (type != Object.class && StringUtils.isEmpty(name)) {
                 //by type
-                if (!fieldClass.isAssignableFrom(type)) {
-                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
-                            fieldClass.getName());
-                }
+                assertAssignable(fieldClass, type);
                 dependency = get(type);
             } else {
                 //by name
                 String fieldName = (StringUtils.isEmpty(name) ? field.getName() : name);
                 dependency = get(fieldName);
                 if (dependency == null && type != Object.class) {
-                    if (!fieldClass.isAssignableFrom(type)) {
-                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
-                                fieldClass.getName());
-                    }
+                    assertAssignable(fieldClass, type);
                     dependency = get(type);
                 }
             }
@@ -605,20 +601,14 @@ public final class BeanContainer {
             Class parameterClass = parameter.getType();
             if (type != Object.class && StringUtils.isEmpty(resourceName)) {
                 //by type
-                if (!parameterClass.isAssignableFrom(type)) {
-                    throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
-                            parameterClass.getName());
-                }
+                assertAssignable(parameterClass, type);
                 dependency = get(type);
             } else {
                 //by name
                 String name = (StringUtils.isEmpty(resourceName) ? parameter.getName() : resourceName);
                 dependency = get(name);
                 if (dependency == null && type != Object.class) {
-                    if (!parameterClass.isAssignableFrom(type)) {
-                        throw new IllegalStateException("Class " + type.getName() + " can't be casted to " +
-                                parameterClass.getName());
-                    }
+                    assertAssignable(parameterClass, type);
                     dependency = get(type);
                 }
             }
@@ -627,6 +617,18 @@ public final class BeanContainer {
             } else {
                 throw new IllegalStateException("Can't find a candidate for method: " + method.toString() + ".");
             }
+        }
+    }
+
+    /**
+     * 检查superClass是否是subClass的父类或本类.
+     *
+     * @throws IllegalStateException 如果不是
+     */
+    private void assertAssignable(Class<?> superClass, Class<?> subClass) {
+        if (!superClass.isAssignableFrom(subClass)) {
+            throw new IllegalStateException("Class " + subClass.getName() + " can't be casted to " +
+                    superClass.getName());
         }
     }
 
