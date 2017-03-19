@@ -17,7 +17,6 @@ public class BeanWrapper {
      * 是否正在创建对应的bean实例.
      */
     private boolean currentlyInCreation = false;
-    //TODO 被构造器依赖?
 
     public Scope getScope() {
         return scope;
@@ -51,6 +50,14 @@ public class BeanWrapper {
         this.target = target;
     }
 
+    public boolean isCurrentlyInCreation() {
+        return currentlyInCreation;
+    }
+
+    public void setCurrentlyInCreation(boolean currentlyInCreation) {
+        this.currentlyInCreation = currentlyInCreation;
+    }
+
     @Override
     public String toString() {
         return "BeanWrapper{" +
@@ -58,6 +65,7 @@ public class BeanWrapper {
                 ", beanName='" + beanName + '\'' +
                 ", targetClass=" + targetClass +
                 ", target=" + target +
+                ", currentlyInCreation=" + currentlyInCreation +
                 '}';
     }
 

@@ -12,15 +12,6 @@ import bean.annotation.Component;
 @Component
 public class Teacher implements BeanContainerAware {
 
-    private Student student;
-
-    public Teacher(Student student) {
-        this.student = student;
-    }
-
-    public void printStudent() {
-        System.out.println(student);
-    }
 
     @Override
     public void setBeanContainer(BeanContainer beanContainer) {

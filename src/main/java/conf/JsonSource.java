@@ -54,7 +54,7 @@ public class JsonSource extends AbstractPathBasedSource {
 
     @Override
     public String get(String key) {
-        return (String) doGet(key);
+        return doGet(key).toString();
     }
 
     private Object doGet(String key) {

@@ -1,5 +1,8 @@
 package ioc;
 
+import bean.Scope;
+import bean.annotation.Component;
+
 import javax.annotation.Resource;
 
 /**
@@ -7,7 +10,8 @@ import javax.annotation.Resource;
  *
  * @author skywalker
  */
-public abstract class Student {
+@Component(scope = Scope.PROTOTYPE)
+public class Student {
 
     @Resource
     private Teacher teacher;

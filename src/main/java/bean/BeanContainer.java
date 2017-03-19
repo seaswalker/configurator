@@ -4,6 +4,7 @@ import bean.annotation.Component;
 import bean.annotation.Init;
 import bean.annotation.Value;
 import bean.converter.*;
+import bean.exception.CircularReferenceException;
 import conf.Source;
 import org.apache.commons.lang3.StringUtils;
 import org.reflections.ReflectionUtils;
@@ -152,13 +153,39 @@ public final class BeanContainer {
                     candidates.add(entry.getValue());
                 }
             }
-            int size = candidates.size();
-            if (size > 1) {
-                throw new IllegalStateException("Given bean class has one more candidates: " + getCandidatesInfo(candidates) + ".");
-            }
-            if (size == 1) {
-                BeanWrapper beanWrapper = candidates.get(0);
+            BeanWrapper beanWrapper = findEligibleCandidate(candidates, beanClass);
+            if (beanWrapper != null) {
                 result = (T) loadBean(beanWrapper);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 在候选者中寻找最合适的一个，逻辑:
+     * <ul>
+     * <li>如果candidates为空，那么直接返回null.</li>
+     * <li>如果candidates大小为1，那么返回第一个.</li>
+     * <li>如果candidates大小大于1，那么寻找targetClass与requiredType相等(==)的候选者.</li>
+     * </ul>
+     *
+     * @throws IllegalStateException 如果发现多个候选者
+     */
+    private <T> BeanWrapper findEligibleCandidate(List<BeanWrapper> candidates, Class<T> requiredType) {
+        int size = candidates.size();
+        BeanWrapper result = null;
+        if (size == 1) {
+            result = candidates.get(0);
+        } else if (size > 1) {
+            for (int i = 0; i < size; i++) {
+                if (candidates.get(i).getTargetClass() == requiredType) {
+                    result = candidates.get(i);
+                    break;
+                }
+            }
+            if (result == null) {
+                throw new IllegalStateException("Given bean class has one more candidates: " +
+                        getCandidatesInfo(candidates) + ".");
             }
         }
         return result;
@@ -190,14 +217,28 @@ public final class BeanContainer {
      *
      * @param beanWrapper {@linkplain BeanWrapper} 非空
      * @return 初始化的bean实例
+     * @throws CircularReferenceException 如果满足以下条件:
+     *                                    <ul>
+     *                                    <li>{@link #allowCircularReference}设为false.</li>
+     *                                    <li>bean尚未完成初始化(构造器).</li>
+     *                                    <li>bean的{@link Scope}不为{@linkplain Scope#SINGLETOM}.</li>
+     *                                    </ul>
      */
     private Object loadBean(BeanWrapper beanWrapper) {
         Object result = beanWrapper.getTarget();
+        if (beanWrapper.isCurrentlyInCreation()) {
+            if (!allowCircularReference || (result == null) || beanWrapper.getScope() != Scope.SINGLETOM) {
+                throw new CircularReferenceException("Circular reference bean '" + beanWrapper.getBeanName() + "'.");
+            }
+            return result;
+        }
         if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
-            result = createBean(beanWrapper.getTargetClass());
+            beanWrapper.setCurrentlyInCreation(true);
+            result = createBean(beanWrapper);
             if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
                 beanWrapper.setTarget(result);
             }
+            beanWrapper.setCurrentlyInCreation(false);
         }
         return result;
     }
@@ -214,9 +255,14 @@ public final class BeanContainer {
     /**
      * 创建bean实例.
      */
-    private Object createBean(Class beanClass) {
+    private Object createBean(BeanWrapper beanWrapper) {
+        Class beanClass = beanWrapper.getTargetClass();
         Object instance = newInstance(beanClass);
         if (instance != null) {
+            if (allowCircularReference && beanWrapper.getScope() == Scope.SINGLETOM) {
+                //earlyReference
+                beanWrapper.setTarget(instance);
+            }
             if (source != null) {
                 injectConfs(instance, beanClass);
             }
@@ -285,17 +331,22 @@ public final class BeanContainer {
      */
     private Object resolveArg(Parameter parameter) {
         Value value = parameter.getAnnotation(Value.class);
-        Object result;
+        Object result = null;
+        //jdk1.8 javac -parameters参数
+        String name = (parameter.isNamePresent() ? parameter.getName() : null);
         if (value != null) {
-            //jdk1.8 javac -parameters参数
-            String name = (parameter.isNamePresent() ? parameter.getName() : null);
             result = resolveConfByValue(parameter, name, parameter.getType(), parameter.getParameterizedType());
         } else {
             Class type = parameter.getType();
             if (type.isPrimitive()) {
                 throw new IllegalStateException("Can't inject to primitive type: " + parameter + ".");
             }
-            result = get(type);
+            if (name != null) {
+                result = get(name);
+            }
+            if (result == null) {
+                result = get(type);
+            }
         }
         return result;
     }

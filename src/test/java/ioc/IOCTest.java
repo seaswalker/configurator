@@ -32,7 +32,7 @@ public class IOCTest {
         Injecter injecter = new Injecter().source(source);
         BeanContainer container = injecter.basePackage("ioc").inject();
         Teacher teacher = (Teacher) container.get("teacher");
-        teacher.printStudent();
+        System.out.println(teacher);
     }
 
     /**
@@ -43,18 +43,7 @@ public class IOCTest {
         Injecter injecter = new Injecter();
         BeanContainer container = injecter.basePackage("ioc").inject();
         Teacher teacher = (Teacher) container.get("tea");
-        teacher.printStudent();
-    }
-
-    /**
-     * 测试bean name冲突的情况.需要将{@link Student}的名改为teacher.
-     */
-    @Test(expected = IllegalStateException.class)
-    public void nameComplict() {
-        Injecter injecter = new Injecter();
-        BeanContainer container = injecter.basePackage("ioc").inject();
-        Teacher teacher = (Teacher) container.get("teacher");
-        teacher.printStudent();
+        System.out.println(teacher.toString());
     }
 
     /**
@@ -81,9 +70,9 @@ public class IOCTest {
         Injecter injecter = new Injecter();
         BeanContainer container = injecter.basePackage("ioc").inject();
         ExecutorService service = Executors.newFixedThreadPool(2);
-        Callable<Student> task = () -> container.get(Student.class);
-        Future<Student> s1 = service.submit(task);
-        Future<Student> s2 = service.submit(task);
+        Callable<Teacher> task = () -> container.get(Teacher.class);
+        Future<Teacher> s1 = service.submit(task);
+        Future<Teacher> s2 = service.submit(task);
         service.shutdown();
         Assert.assertTrue(s1.get() == s2.get());
     }
@@ -96,10 +85,9 @@ public class IOCTest {
         CompositeSource source = new CompositeSource();
         source.registerSource(new JsonSource("etc/conf.json"), new PropertiesSource("etc/db.properties"),
                 new XmlSource("etc/test.xml"));
-        Injecter injecter = new Injecter().source(source);
+        Injecter injecter = new Injecter().source(source).allowCircularReference(true);
         BeanContainer container = injecter.basePackage("ioc").inject();
-        List<Student> students = container.getBeansWithType(Student.class);
-        System.out.println(students);
+        System.out.println(container.get(Student.class));
     }
 
 }

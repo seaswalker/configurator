@@ -19,7 +19,7 @@ public class JsonTest {
     public void test() throws LoadException {
         Source source = new JsonSource("etc/conf.json");
         Injecter injecter = new Injecter();
-        BeanContainer beanContainer = injecter.basePackage("xml").source(source).inject();
+        BeanContainer beanContainer = injecter.basePackage("json").source(source).inject();
         JsonHolder holder = beanContainer.get(JsonHolder.class);
         System.out.println(holder);
     }
