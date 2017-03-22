@@ -20,7 +20,7 @@ public class Reporter {
     @Value(key = "china.phone")
     private int phone;
   
-  	@Value(key = "china.area#ranking")
+    @Value(key = "china.area#ranking")
     public void setRanking(int ranking) {
         this.ranking = ranking;
     }
@@ -32,11 +32,11 @@ public class Reporter {
 ```java
 @Test
 public void xml() {
-	Source source = new XMLSource("etc/test.xml");
-	Injecter injecter = new Injecter();
-	BeanContainer beanContainer = injecter.basePackage("xml").source(source).inject();
-	Reporter reporter = beanContainer.get(Reporter.class);
-	System.out.println(reporter);
+    Source source = new XMLSource("etc/test.xml");
+    Injecter injecter = new Injecter();
+    BeanContainer beanContainer = injecter.basePackage("xml").source(source).inject();
+    Reporter reporter = beanContainer.get(Reporter.class);
+    System.out.println(reporter);
 }
 ```
 
