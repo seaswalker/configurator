@@ -35,9 +35,9 @@
     <name>Configurer</name>
     <url>http://maven.apache.org</url>
 
-    <properties>
+    <configurator.properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    </configurator.properties>
 
     <dependencies>
         <dependency>
@@ -48,26 +48,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.22</version>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.1.8</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>0.9.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.5</version>
         </dependency>
         <dependency>
             <groupId>com.alibaba</groupId>
