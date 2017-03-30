@@ -1,6 +1,7 @@
 package configurator.bean;
 
 import configurator.bean.annotation.Component;
+import configurator.bean.annotation.Destroy;
 import configurator.bean.annotation.Init;
 import configurator.bean.annotation.Value;
 import configurator.bean.converter.*;
@@ -31,6 +32,8 @@ public final class BeanContainer {
      */
     private final boolean allowCircularReference;
 
+    private volatile boolean closed = false;
+
     public BeanContainer(Source source, boolean allowCircularReference) {
         this.source = source;
         this.allowCircularReference = allowCircularReference;
@@ -59,6 +62,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果注册失败
      */
     public void register(Class beanClass) {
+        assertNotClosed();
         Objects.requireNonNull(beanClass);
         Component component = (Component) beanClass.getAnnotation(Component.class);
         if (component == null) {
@@ -76,6 +80,7 @@ public final class BeanContainer {
      * @param scope     {@link Scope}
      */
     public void register(Class beanClass, Scope scope) {
+        assertNotClosed();
         Objects.requireNonNull(beanClass);
         Objects.requireNonNull(scope);
         doRegister(beanClass, scope, null);
@@ -89,6 +94,7 @@ public final class BeanContainer {
      * @param name      bean名称
      */
     public void register(Class beanClass, Scope scope, String name) {
+        assertNotClosed();
         Objects.requireNonNull(beanClass);
         Objects.requireNonNull(scope);
         if (Util.isEmpty(name)) {
@@ -126,6 +132,7 @@ public final class BeanContainer {
      * @throws IllegalArgumentException 如果参数为null或empty
      */
     public Object get(String beanName) {
+        assertNotClosed();
         if (Util.isEmpty(beanName)) {
             throw new IllegalArgumentException("Param beanName can't be null or empty.");
         }
@@ -145,6 +152,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果发现多个候选者
      */
     public <T> T get(Class<T> beanClass) {
+        assertNotClosed();
         Objects.requireNonNull(beanClass);
         List<BeanWrapper> candidates = new ArrayList<>();
         T result = null;
@@ -200,6 +208,7 @@ public final class BeanContainer {
      * @return {@link List}, 如果没有找到任何bean，那么返回空链表，而不是null
      */
     public <T> List<T> getBeansWithType(Class<T> clazz) {
+        assertNotClosed();
         Objects.requireNonNull(clazz);
         List<T> beans = new LinkedList<T>();
         synchronized (monitor) {
@@ -254,6 +263,15 @@ public final class BeanContainer {
     }
 
     /**
+     * 如果当前容器已关闭，那么抛出{@link IllegalStateException}.
+     */
+    private void assertNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("The container is closed.");
+        }
+    }
+
+    /**
      * 创建bean实例.
      */
     private Object createBean(BeanWrapper beanWrapper) {
@@ -275,6 +293,59 @@ public final class BeanContainer {
             invokeInitMethodsIfNecessary(beanClass, instance);
         }
         return instance;
+    }
+
+    /**
+     * 销毁beanClass对应的bean，注意，不同于{@link #get(Class)}，本方法不会销毁
+     * 当前类的子类的bean.
+     *
+     * @param destroyHint 如果为false，那么容器将不会尝试调用销毁方法
+     */
+    public void detachBean(Class<?> beanClass, boolean destroyHint) {
+        assertNotClosed();
+        Objects.requireNonNull(beanClass);
+        BeanWrapper beanWrapper;
+        synchronized (monitor) {
+            beanWrapper = classMap.remove(beanClass);
+            nameMap.remove(beanWrapper.getBeanName());
+        }
+        if (beanWrapper != null && destroyHint) {
+            invokeDestroyMethodsIfNecessary(beanWrapper);
+        }
+    }
+
+    /**
+     * @see #detachBean(Class, boolean)
+     */
+    public void detachBean(Class<?> beanClass) {
+        detachBean(beanClass, true);
+    }
+
+    /**
+     * 销毁name对应的bean.
+     *
+     * @param destroyHint 如果为false，那么容器将不会尝试调用销毁方法
+     */
+    public void detachBean(String name, boolean destroyHint) {
+        assertNotClosed();
+        if (Util.isEmpty(name)) {
+            throw new IllegalArgumentException("Parameter 'name' can't be null or empty.");
+        }
+        BeanWrapper beanWrapper;
+        synchronized (monitor) {
+            beanWrapper = nameMap.remove(name);
+            classMap.remove(beanWrapper.getTargetClass());
+        }
+        if (beanWrapper != null && destroyHint) {
+            invokeDestroyMethodsIfNecessary(beanWrapper);
+        }
+    }
+
+    /**
+     * @see #detachBean(String, boolean)
+     */
+    public void detachBean(String name) {
+        detachBean(name, true);
     }
 
     /**
@@ -380,7 +451,7 @@ public final class BeanContainer {
      * @throws IllegalStateException 如果构造失败
      */
     private Object newInstance(Class beanClass) {
-        Object instance = null;
+        Object instance;
         try {
             Constructor[] constructors = beanClass.getConstructors();
             int length = constructors.length;
@@ -511,8 +582,7 @@ public final class BeanContainer {
      */
     private Object convertTo(String value, Class requiredType) {
         List<TypeConverter> converters = getBeansWithType(TypeConverter.class);
-        for (int i = 0, l = converters.size(); i < l; i++) {
-            TypeConverter converter = converters.get(i);
+        for (TypeConverter converter : converters) {
             if (converter.support(requiredType)) {
                 Object result = converter.convert(value);
                 if (result != null) {
@@ -639,7 +709,7 @@ public final class BeanContainer {
                 throw new IllegalStateException("We support one parameter only, method: " + method.toString() + ".");
             }
             Parameter parameter = parameters[0];
-            Class parameterClass = parameter.getType();
+            Class<?> parameterClass = parameter.getType();
             if (type != Object.class && Util.isEmpty(resourceName)) {
                 //by type
                 assertAssignable(parameterClass, type);
@@ -684,6 +754,43 @@ public final class BeanContainer {
             method.invoke(instance, params);
         } catch (Exception e) {
             throw new IllegalStateException("Invoke method '" + method + "' failed.", e);
+        }
+    }
+
+    /**
+     * 关闭容器，如果bean中含有{@link configurator.bean.annotation.Destroy}方法，那么调用之.
+     */
+    public void close() {
+        assertNotClosed();
+        closed = true;
+        synchronized (monitor) {
+            classMap.forEach((key, value) -> {
+                invokeDestroyMethodsIfNecessary(value);
+            });
+        }
+    }
+
+    /**
+     * 如果bean的Scope为{@link Scope#SINGLETOM}且定义了{@link configurator.bean.annotation.Destroy}方法，那么
+     * 调用之.
+     */
+    private void invokeDestroyMethodsIfNecessary(BeanWrapper beanWrapper) {
+        if (beanWrapper.getScope() == Scope.SINGLETOM) {
+            Set<Method> methods = ReflectionUtils.getMethods(beanWrapper.getTargetClass(),
+                    ReflectionUtils.withAnnotation(Destroy.class));
+            if (methods.size() > 0) {
+                final Object[] emptyParams = new Object[0];
+                List<Method> sorted = new ArrayList<>(methods);
+                sorted.sort((o1, o2) -> o2.getAnnotation(Destroy.class).order() -
+                        o1.getAnnotation(Destroy.class).order());
+                sorted.forEach(method -> {
+                    if (method.getParameterCount() > 0) {
+                        throw new IllegalStateException("Destruction method '" + method.getName() + "' in class '" +
+                                beanWrapper.getTargetClass().getName() + "' can't have parameters.");
+                    }
+                    invokeMethod(method, beanWrapper.getTarget(), emptyParams);
+                });
+            }
         }
     }
 
