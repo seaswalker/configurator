@@ -193,7 +193,7 @@ public final class BeanContainer {
                 }
             }
             if (result == null) {
-                throw new IllegalStateException("Given configurator.bean class has one more candidates: " +
+                throw new IllegalStateException("Given bean class has one more candidates: " +
                         getCandidatesInfo(candidates) + ".");
             }
         }
@@ -238,7 +238,7 @@ public final class BeanContainer {
         Object result = beanWrapper.getTarget();
         if (beanWrapper.isCurrentlyInCreation()) {
             if (!allowCircularReference || (result == null) || beanWrapper.getScope() != Scope.SINGLETOM) {
-                throw new CircularReferenceException("Circular reference configurator.bean '" + beanWrapper.getBeanName() + "'.");
+                throw new CircularReferenceException("Circular reference bean '" + beanWrapper.getBeanName() + "'.");
             }
             return result;
         }
@@ -411,7 +411,7 @@ public final class BeanContainer {
         } else {
             Class type = parameter.getType();
             if (type.isPrimitive()) {
-                throw new IllegalStateException("Can't configurator.inject to primitive type: " + parameter + ".");
+                throw new IllegalStateException("Can't inject to primitive type: " + parameter + ".");
             }
             if (name != null) {
                 result = get(name);
@@ -466,11 +466,11 @@ public final class BeanContainer {
             Object[] args = resolveArgs(parameters);
             instance = constructor.newInstance(args);
         } catch (InstantiationException e) {
-            throw new IllegalStateException("Construct configurator.bean failed, maybe there is no default constructor.", e);
+            throw new IllegalStateException("Construct bean failed, maybe there is no default constructor.", e);
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Construct configurator.bean failed, maybe there is no public constructor.", e);
+            throw new IllegalStateException("Construct bean failed, maybe there is no public constructor.", e);
         } catch (InvocationTargetException e) {
-            throw new IllegalStateException("Exception occurred when constructing configurator.bean " + beanClass.getName() + ".", e);
+            throw new IllegalStateException("Exception occurred when constructing bean " + beanClass.getName() + ".", e);
         }
         return instance;
     }
