@@ -186,9 +186,9 @@ public final class BeanContainer {
         if (size == 1) {
             result = candidates.get(0);
         } else if (size > 1) {
-            for (int i = 0; i < size; i++) {
-                if (candidates.get(i).getTargetClass() == requiredType) {
-                    result = candidates.get(i);
+            for (BeanWrapper candidate : candidates) {
+                if (candidate.getTargetClass() == requiredType) {
+                    result = candidate;
                     break;
                 }
             }
@@ -703,7 +703,7 @@ public final class BeanContainer {
             Resource resource = method.getAnnotation(Resource.class);
             String resourceName = resource.name();
             Class type = resource.type();
-            Object dependency = null;
+            Object dependency;
             Parameter[] parameters = method.getParameters();
             if (parameters.length != 1) {
                 throw new IllegalStateException("We support one parameter only, method: " + method.toString() + ".");
@@ -771,11 +771,14 @@ public final class BeanContainer {
     }
 
     /**
-     * 如果bean的Scope为{@link Scope#SINGLETOM}且定义了{@link configurator.bean.annotation.Destroy}方法，那么
-     * 调用之.
+     * 如果bean满足以下两个条件，那么将调用其{@link Destroy}方法.
+     * <ul>
+     * <li>1. scope为{@link Scope#SINGLETOM}.</li>
+     * <li>2. {@link BeanWrapper#getTarget()}不为null，即bean已经初始化.</li>
+     * </ul>
      */
     private void invokeDestroyMethodsIfNecessary(BeanWrapper beanWrapper) {
-        if (beanWrapper.getScope() == Scope.SINGLETOM) {
+        if (beanWrapper.getScope() == Scope.SINGLETOM && beanWrapper.getTarget() != null) {
             Set<Method> methods = ReflectionUtils.getMethods(beanWrapper.getTargetClass(),
                     ReflectionUtils.withAnnotation(Destroy.class));
             if (methods.size() > 0) {

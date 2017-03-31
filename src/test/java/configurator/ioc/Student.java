@@ -2,6 +2,7 @@ package configurator.ioc;
 
 import configurator.bean.Scope;
 import configurator.bean.annotation.Component;
+import configurator.bean.annotation.Destroy;
 
 import javax.annotation.Resource;
 
@@ -10,7 +11,7 @@ import javax.annotation.Resource;
  *
  * @author skywalker
  */
-@Component(scope = Scope.PROTOTYPE)
+@Component(scope = Scope.SINGLETOM)
 public class Student {
 
     @Resource
@@ -22,6 +23,16 @@ public class Student {
     public Student() {
         this.name = "skywalker";
         this.age = 10;
+    }
+
+    @Destroy(order = 1)
+    public void end1() {
+        System.out.println("学生gg1");
+    }
+
+    @Destroy(order = 2)
+    public void end2() {
+        System.out.println("学生gg2");
     }
 
     @Override

@@ -89,4 +89,14 @@ public class IOCTest {
         System.out.println(container.get(Student.class));
     }
 
+    @Test
+    public void destroy() {
+        Injector injector = new Injector();
+        BeanContainer container = injector.basePackage("configurator.ioc").inject();
+        container.get(ChinaStudent.class);
+        container.get("student");
+        container.detachBean(ChinaStudent.class);
+        container.close();
+    }
+
 }
