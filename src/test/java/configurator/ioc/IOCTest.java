@@ -45,9 +45,9 @@ public class IOCTest {
         System.out.println(teacher.toString());
     }
 
-    /**
+   /* *//**
      * 测试{@link configurator.bean.Scope}.
-     */
+     *//*
     @Test
     public void scope() {
         Injector injector = new Injector();
@@ -55,7 +55,7 @@ public class IOCTest {
         Student s1 = (Student) container.get("student");
         Student s2 = (Student) container.get("student");
         Assert.assertTrue(s1 != s2);
-    }
+    }*/
 
     @Test
     public void annotation() throws ClassNotFoundException {
