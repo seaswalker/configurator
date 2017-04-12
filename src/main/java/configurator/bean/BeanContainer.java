@@ -548,12 +548,12 @@ public final class BeanContainer {
                 throw new IllegalStateException("Key must be confirmed: " + object + ".");
             }
         }
-        if (isRequireAll(key)) {
+        if (needFind(key)) {
             if (!isEligibleMap(clazz, type)) {
                 throw new IllegalStateException("Inject all configurations for " + object +
                         " failed, type Map<String,String> required.");
             }
-            result = source.getAll();
+            result = source.find(handlePrefix(key));
         } else {
             if (!source.contains(key)) {
                 String defaultValue = value.defaultValue();
@@ -594,14 +594,33 @@ public final class BeanContainer {
     }
 
     /**
-     * 字段是否需要{@link Source}的所有配置.
+     * 是否需要进行前缀搜索.
+     *
+     * @return true, 如果需要
      */
-    private boolean isRequireAll(String key) {
-        return (key.equals("*"));
+    private boolean needFind(String key) {
+        String[] parts = key.split("\\.");
+        return (parts[parts.length - 1].equals("*"));
     }
 
     /**
-     * 给定的字段是否是{@link Map}，且泛型满足{@link Source}.getAll()方法的返回值.
+     * 将(a.b.*)处理为(a.b).
+     */
+    private String handlePrefix(String key) {
+        String[] parts = key.split("\\.");
+        if (parts.length == 1) {
+            return "";
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < parts.length - 1; i++) {
+                sb.append(parts[i]).append(".");
+            }
+            return sb.deleteCharAt(sb.length() - 1).toString();
+        }
+    }
+
+    /**
+     * 给定的字段是否是{@link Map}，且泛型满足{@link Source}.find()方法的返回值.
      *
      * @return true，如果满足
      */

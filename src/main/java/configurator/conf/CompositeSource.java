@@ -54,10 +54,10 @@ public class CompositeSource extends AbstractSource {
     }
 
     @Override
-    public Map<String, String> getAll() {
+    protected Map<String, String> doFind(String prefix) {
         LinkedHashMap<String, String> result = new LinkedHashMap<>();
         for (int i = 0, l = sources.size(); i < l; i++) {
-            result.putAll(sources.get(i).getAll());
+            result.putAll(sources.get(i).find(prefix));
         }
         return result;
     }

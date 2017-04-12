@@ -1,5 +1,9 @@
 package configurator.conf;
 
+import configurator.util.Util;
+
+import java.util.Map;
+
 /**
  * {@link Source}骨架实现，提供统一的{@link Source#contains(String)}方法实现.
  *
@@ -54,7 +58,17 @@ public abstract class AbstractSource implements Source {
 
     @Override
     public String[] getStringArray(String key) {
-        return null;
+        throw new UnsupportedOperationException();
     }
+
+    @Override
+    public final Map<String, String> find(String prefix) {
+        if (Util.isEmpty(prefix) || prefix.equals("*")) {
+            prefix = "";
+        }
+        return doFind(prefix);
+    }
+
+    protected abstract Map<String, String> doFind(String prefix);
 
 }

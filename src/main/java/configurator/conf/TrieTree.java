@@ -1,5 +1,7 @@
 package configurator.conf;
 
+import configurator.util.Util;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -91,7 +93,7 @@ public final class TrieTree {
             return null;
         }
         if (!isLeaf(node)) {
-            throw new IllegalStateException("Get() method supports leaf node only.");
+            throw new IllegalStateException("Get() method supports leaf node only, key '" + key + "'.");
         }
         return node.value;
     }
@@ -115,21 +117,13 @@ public final class TrieTree {
      */
     public Map<String, String> find(String prefix) {
         Node node = seekTo(prefix);
-        if (node == null) {
-            return new LinkedHashMap<>(0);
+        Map<String, String> result = new LinkedHashMap<>(0);
+        if (node != null) {
+            if (node != head) {
+                prefix += ".";
+            }
+            collectAsMap(prefix, node, result);
         }
-        Map<String, String> result = new LinkedHashMap<>();
-        prefix += ".";
-        collectAsMap(prefix, node, result);
-        return result;
-    }
-
-    /**
-     * 得到当前树中的所有节点.
-     */
-    public Map<String, String> getAll() {
-        Map<String, String> result = new LinkedHashMap<>();
-        collectAsMap("", head, result);
         return result;
     }
 
@@ -168,12 +162,14 @@ public final class TrieTree {
      * 向下对key逐部分进行匹配.
      */
     private Node seekTo(String key) {
-        String[] parts = key.split(separator);
         Node node = head;
-        for (int i = 0, l = parts.length; i < l; i++) {
-            node = findChild(node, parts[i]);
-            if (node == null) {
-                return null;
+        if (!key.equals("")) {
+            String[] parts = key.split(separator);
+            for (int i = 0, l = parts.length; i < l; i++) {
+                node = findChild(node, parts[i]);
+                if (node == null) {
+                    return null;
+                }
             }
         }
         return node;

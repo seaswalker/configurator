@@ -4,6 +4,7 @@ import configurator.bean.annotation.Component;
 import configurator.bean.annotation.Value;
 
 import java.util.Arrays;
+import java.util.Map;
 
 /**
  * configurator.conf.json载体.
@@ -30,6 +31,8 @@ public class JsonHolder {
     private String[] msisdns;
     @Value(key = "loc_ids")
     private String[] locIds;
+    @Value(key = "interval.*")
+    private Map<String, String> interval;
 
     @Value
     public void setIp(String ip) {
@@ -48,7 +51,7 @@ public class JsonHolder {
                 ", intervalValue=" + intervalValue +
                 ", msisdns=" + Arrays.toString(msisdns) +
                 ", locIds=" + Arrays.toString(locIds) +
+                ", interval=" + interval +
                 '}';
     }
-
 }

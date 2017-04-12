@@ -16,8 +16,8 @@ public abstract class AbstractTreeBasedSource extends AbstractPathBasedSource {
     }
 
     @Override
-    public Map<String, String> getAll() {
-        return holder.getAll();
+    protected final Map<String, String> doFind(String prefix) {
+        return holder.find(prefix);
     }
 
 }

@@ -8,4 +8,8 @@
         <leader>li</leader>
         <leader>hu</leader>
     </leaders>
+    <province>
+        <city1>jinan</city1>
+        <city2>qingdao</city2>
+    </province>
 </china>

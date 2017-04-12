@@ -62,10 +62,11 @@ public interface Source {
     String[] getStringArray(String key);
 
     /**
-     * 以{@link Map}的形式得到所有的配置.
+     * 属性搜索.
      *
+     * @param prefix 前缀，比如为a.b，那么将得到a.b下所有的子属性的值，如果为null或""，那么表示获取当前Source下的所有属性.
      * @return {@link Map}
      */
-    Map<String, String> getAll();
+    Map<String, String> find(String prefix);
 
 }

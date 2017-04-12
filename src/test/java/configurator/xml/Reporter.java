@@ -53,7 +53,7 @@ public class Reporter {
         this.domain = domain;
     }
 
-    @Value(key = "*")
+    @Value(key = "china.province.*")
     public void setAll(HashMap<Object, String> all) {
         this.all = all;
     }

@@ -64,7 +64,7 @@ public class TrieTreeTest {
         tree.addValue("us.leader", "Obama");
         tree.addMetaData("us.leader", "color", "black");
         tree.addMetaData("china.leader", "color", "yellow");
-        System.out.println(tree.getAll());
+        System.out.println(tree.find(""));
     }
 
     /**

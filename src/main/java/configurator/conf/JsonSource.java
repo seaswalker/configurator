@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import configurator.conf.exception.LoadException;
+import configurator.util.Util;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -33,7 +34,7 @@ public class JsonSource extends AbstractPathBasedSource {
             String data = readAsString();
             Object o = JSON.parse(data);
             if (!(o instanceof JSONObject)) {
-                throw new IllegalStateException("We support configurator.json object only.");
+                throw new IllegalStateException("We support json object only.");
             }
             json = JSONObject.class.cast(o);
         } catch (Exception e) {
@@ -98,7 +99,7 @@ public class JsonSource extends AbstractPathBasedSource {
         for (int i = 0, l = parts.length; i < l; i++) {
             Object o = node.get(parts[i]);
             if (o == null) {
-                throw new IllegalStateException("Can't find key: " + concatParts(parts, i) + ".");
+                return null;
             }
             if (!(o instanceof JSONObject)) {
                 throw new IllegalStateException("Key: " + concatParts(parts, i) + " can't be leaf or array node.");
@@ -154,7 +155,7 @@ public class JsonSource extends AbstractPathBasedSource {
     public String[] getStringArray(String key) {
         Object o = doGet(key);
         if (!(o instanceof JSONArray)) {
-            throw new IllegalStateException("Given key: " + key + " must be a configurator.json array.");
+            throw new IllegalStateException("Given key: " + key + " must be a json array.");
         }
         JSONArray array = JSONArray.class.cast(o);
         if (!isPrimitiveArray(array)) {
@@ -165,9 +166,18 @@ public class JsonSource extends AbstractPathBasedSource {
     }
 
     @Override
-    public Map<String, String> getAll() {
+    protected Map<String, String> doFind(String prefix) {
         Map<String, String> result = new LinkedHashMap<>();
-        collect(result, "", json);
+        JSONObject parent;
+        if (prefix.equals("")) {
+            parent = json;
+        } else {
+            parent = seekTo(prefix.split("\\."));
+            prefix += ".";
+        }
+        if (parent != null) {
+            collect(result, prefix, parent);
+        }
         return result;
     }
 
