@@ -355,7 +355,7 @@ public final class BeanContainer {
      * @param instance  bean实例
      */
     private void invokeInitMethodsIfNecessary(Class beanClass, Object instance) {
-        Set<Method> methods = ReflectionUtils.getMethods(beanClass, ReflectionUtils.withAnnotation(Init.class));
+        Set<Method> methods = ReflectionUtils.getAllMethods(beanClass, ReflectionUtils.withAnnotation(Init.class));
         if (methods.size() > 0) {
             List<Method> sorted = new ArrayList<>(methods);
             //倒序排列
@@ -798,7 +798,7 @@ public final class BeanContainer {
      */
     private void invokeDestroyMethodsIfNecessary(BeanWrapper beanWrapper) {
         if (beanWrapper.getScope() == Scope.SINGLETOM && beanWrapper.getTarget() != null) {
-            Set<Method> methods = ReflectionUtils.getMethods(beanWrapper.getTargetClass(),
+            Set<Method> methods = ReflectionUtils.getAllMethods(beanWrapper.getTargetClass(),
                     ReflectionUtils.withAnnotation(Destroy.class));
             if (methods.size() > 0) {
                 final Object[] emptyParams = new Object[0];
