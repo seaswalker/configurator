@@ -4,8 +4,8 @@
 
 假如有以下XML:
 
-```configurator.xml
-<?configurator.xml version="1.0" encoding="UTF-8" ?>
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
 <china>
     <area ranking="3">960</area>
     <phone>86</phone>
@@ -31,10 +31,10 @@ public class Reporter {
 
 ```java
 @Test
-public void configurator.xml() {
-    Source source = new XMLSource("etc/test.configurator.xml");
+public void xml() {
+    Source source = new XMLSource("etc/configurator.xml");
     Injecter injector = new Injecter();
-    BeanContainer beanContainer = injector.basePackage("configurator.xml").source(source).configurator.inject();
+    BeanContainer beanContainer = injector.basePackage("configurator.xml").source(source).inject();
     Reporter reporter = beanContainer.get(Reporter.class);
     System.out.println(reporter);
 }
