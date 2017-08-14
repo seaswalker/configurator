@@ -1,7 +1,5 @@
 package configurator.conf;
 
-import configurator.util.Util;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,7 +36,7 @@ public final class TrieTree {
     /**
      * 添加一组元信息.
      */
-    public void addMetaDatas(String key, String[] metaDataKeys, String[] metaDataValues) {
+    public void addMetaDataBatch(String key, String[] metaDataKeys, String[] metaDataValues) {
         add(key, null, metaDataKeys, metaDataValues);
     }
 
@@ -165,8 +163,8 @@ public final class TrieTree {
         Node node = head;
         if (!key.equals("")) {
             String[] parts = key.split(separator);
-            for (int i = 0, l = parts.length; i < l; i++) {
-                node = findChild(node, parts[i]);
+            for (String part : parts) {
+                node = findChild(node, part);
                 if (node == null) {
                     return null;
                 }
@@ -217,11 +215,11 @@ public final class TrieTree {
         //元信息
         final Map<String, String> metaData = new LinkedHashMap<>();
 
-        public Node(String value) {
+        Node(String value) {
             this.value = value;
         }
 
-        public Node() {
+        Node() {
         }
 
     }

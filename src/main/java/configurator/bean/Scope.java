@@ -9,7 +9,7 @@ import configurator.bean.annotation.Component;
  */
 public enum Scope {
 
-    SINGLETOM,
+    SINGLETON,
 
     PROTOTYPE
 

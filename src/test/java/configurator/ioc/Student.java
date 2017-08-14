@@ -11,7 +11,7 @@ import javax.annotation.Resource;
  *
  * @author skywalker
  */
-@Component(scope = Scope.SINGLETOM)
+@Component(scope = Scope.SINGLETON)
 public class Student {
 
     @Resource

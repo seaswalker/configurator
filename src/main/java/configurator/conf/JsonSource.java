@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import configurator.conf.exception.LoadException;
-import configurator.util.Util;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -54,14 +53,22 @@ public class JsonSource extends AbstractPathBasedSource {
 
     @Override
     public String get(String key) {
-        return doGet(key).toString();
+        Object value = doGet(key);
+        if (value != null) {
+            return value.toString();
+        }
+        return null;
     }
 
     private Object doGet(String key) {
         String[] parts = resolveKey(key);
         String[] parents = extractParents(parts);
         JSONObject node = seekTo(parents);
-        return node.get(parts[parents.length]);
+        Object result = null;
+        if (node != null) {
+            result = node.get(parts[parents.length]);
+        }
+        return result;
     }
 
     /**
@@ -161,7 +168,7 @@ public class JsonSource extends AbstractPathBasedSource {
         if (!isPrimitiveArray(array)) {
             throw new IllegalStateException("Given key: " + key + " must be a primitive array.");
         }
-        return array.stream().map(item -> item.toString())
+        return array.stream().map(Object::toString)
                 .collect(Collectors.toList()).toArray(new String[0]);
     }
 

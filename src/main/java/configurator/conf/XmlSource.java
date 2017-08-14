@@ -92,7 +92,7 @@ public class XmlSource extends AbstractTreeBasedSource {
                 metaDataKeys[i] = attr.getNodeName();
                 metaDataValues[i] = attr.getNodeValue();
             }
-            holder.addMetaDatas(key, metaDataKeys, metaDataValues);
+            holder.addMetaDataBatch(key, metaDataKeys, metaDataValues);
         }
     }
 

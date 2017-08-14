@@ -7,6 +7,6 @@ package configurator.conf;
  */
 public interface SourceAware {
 
-    void setConf(XmlSource conf);
+    void setSource(Source source);
 
 }

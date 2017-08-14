@@ -24,16 +24,16 @@ public class CompositeSource extends AbstractSource {
 
     @Override
     public void load() throws LoadException {
-        for (int i = 0, l = sources.size(); i < l; i++) {
-            sources.get(i).load();
+        for (Source source : sources) {
+            source.load();
         }
     }
 
     @Override
     public String get(String key) {
         String result = null;
-        for (int i = 0, l = sources.size(); i < l; i++) {
-            result = sources.get(i).get(key);
+        for (Source source : sources) {
+            result = source.get(key);
             if (result != null) {
                 break;
             }
@@ -44,8 +44,8 @@ public class CompositeSource extends AbstractSource {
     @Override
     public String[] getStringArray(String key) {
         String[] result = null;
-        for (int i = 0, l = sources.size(); i < l; i++) {
-            result = sources.get(i).getStringArray(key);
+        for (Source source : sources) {
+            result = source.getStringArray(key);
             if (result != null) {
                 break;
             }
@@ -56,8 +56,8 @@ public class CompositeSource extends AbstractSource {
     @Override
     protected Map<String, String> doFind(String prefix) {
         LinkedHashMap<String, String> result = new LinkedHashMap<>();
-        for (int i = 0, l = sources.size(); i < l; i++) {
-            result.putAll(sources.get(i).find(prefix));
+        for (Source source : sources) {
+            result.putAll(source.find(prefix));
         }
         return result;
     }

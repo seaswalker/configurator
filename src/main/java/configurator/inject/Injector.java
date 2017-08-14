@@ -49,7 +49,7 @@ public class Injector {
 
     /**
      * 设置是否开启允许循环引用，默认开启，注意:
-     * <p>此选项仅在属性注入和方法注入且被引用的bean的作用域为{@link configurator.bean.Scope#SINGLETOM}时有效.</p>
+     * <p>此选项仅在属性注入和方法注入且被引用的bean的作用域为{@link configurator.bean.Scope#SINGLETON}时有效.</p>
      */
     public Injector allowCircularReference(boolean allowCircularReference) {
         this.allowCircularReference = allowCircularReference;
@@ -67,7 +67,7 @@ public class Injector {
         Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Component.class, true);
         BeanContainer container = new BeanContainer(source, allowCircularReference);
         classes.forEach(c -> {
-            if ((!Modifier.isAbstract(c.getModifiers())) && !c.isInterface()) {
+            if ((!Modifier.isAbstract(c.getModifiers())) && !c.isInterface() && Modifier.isPublic(c.getModifiers())) {
                 container.register(c);
             }
         });

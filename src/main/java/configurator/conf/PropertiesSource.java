@@ -22,9 +22,7 @@ public class PropertiesSource extends AbstractTreeBasedSource {
         try {
             Properties properties = new Properties();
             properties.load(new FileInputStream(path));
-            properties.forEach((key, value) -> {
-                holder.addValue((String) key, value.toString());
-            });
+            properties.forEach((key, value) -> holder.addValue((String) key, value.toString()));
         } catch (IOException e) {
             throw new LoadException(e);
         }

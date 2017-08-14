@@ -44,14 +44,14 @@ public final class BeanContainer {
      * 注册默认的{@link TypeConverter}.
      */
     private void registerTypeConvertersInternal() {
-        register(BooleanConverter.class, Scope.SINGLETOM);
-        register(ByteConverter.class, Scope.SINGLETOM);
-        register(DoubleConverter.class, Scope.SINGLETOM);
-        register(FloatConverter.class, Scope.SINGLETOM);
-        register(IntConverter.class, Scope.SINGLETOM);
-        register(LongConverter.class, Scope.SINGLETOM);
-        register(ShortConverter.class, Scope.SINGLETOM);
-        register(StringConverter.class, Scope.SINGLETOM);
+        register(BooleanConverter.class, Scope.SINGLETON);
+        register(ByteConverter.class, Scope.SINGLETON);
+        register(DoubleConverter.class, Scope.SINGLETON);
+        register(FloatConverter.class, Scope.SINGLETON);
+        register(IntConverter.class, Scope.SINGLETON);
+        register(LongConverter.class, Scope.SINGLETON);
+        register(ShortConverter.class, Scope.SINGLETON);
+        register(StringConverter.class, Scope.SINGLETON);
     }
 
     /**
@@ -210,7 +210,7 @@ public final class BeanContainer {
     public <T> List<T> getBeansWithType(Class<T> clazz) {
         assertNotClosed();
         Objects.requireNonNull(clazz);
-        List<T> beans = new LinkedList<T>();
+        List<T> beans = new LinkedList<>();
         synchronized (monitor) {
             classMap.forEach((key, value) -> {
                 if (clazz.isAssignableFrom(key)) {
@@ -231,13 +231,13 @@ public final class BeanContainer {
      *                                    <ul>
      *                                    <li>{@link #allowCircularReference}设为false.</li>
      *                                    <li>bean尚未完成初始化(构造器).</li>
-     *                                    <li>bean的{@link Scope}不为{@linkplain Scope#SINGLETOM}.</li>
+     *                                    <li>bean的{@link Scope}不为{@linkplain Scope#SINGLETON}.</li>
      *                                    </ul>
      */
     private Object loadBean(BeanWrapper beanWrapper) {
         Object result = beanWrapper.getTarget();
         if (beanWrapper.isCurrentlyInCreation()) {
-            if (!allowCircularReference || (result == null) || beanWrapper.getScope() != Scope.SINGLETOM) {
+            if (!allowCircularReference || (result == null) || beanWrapper.getScope() != Scope.SINGLETON) {
                 throw new CircularReferenceException("Circular reference bean '" + beanWrapper.getBeanName() + "'.");
             }
             return result;
@@ -245,7 +245,7 @@ public final class BeanContainer {
         if (result == null || beanWrapper.getScope() == Scope.PROTOTYPE) {
             beanWrapper.setCurrentlyInCreation(true);
             result = createBean(beanWrapper);
-            if (result != null && beanWrapper.getScope() == Scope.SINGLETOM) {
+            if (result != null && beanWrapper.getScope() == Scope.SINGLETON) {
                 beanWrapper.setTarget(result);
             }
             beanWrapper.setCurrentlyInCreation(false);
@@ -278,7 +278,7 @@ public final class BeanContainer {
         Class beanClass = beanWrapper.getTargetClass();
         Object instance = newInstance(beanClass);
         if (instance != null) {
-            if (allowCircularReference && beanWrapper.getScope() == Scope.SINGLETOM) {
+            if (allowCircularReference && beanWrapper.getScope() == Scope.SINGLETON) {
                 //earlyReference
                 beanWrapper.setTarget(instance);
             }
@@ -670,23 +670,8 @@ public final class BeanContainer {
         Set<Field> fields = ReflectionUtils.getAllFields(beanClass, ReflectionUtils.withAnnotation(Resource.class));
         for (Field field : fields) {
             Resource resource = field.getAnnotation(Resource.class);
-            String name = resource.name();
-            Class type = resource.type();
             Class fieldClass = field.getType();
-            Object dependency;
-            if (type != Object.class && Util.isEmpty(name)) {
-                //by type
-                assertAssignable(fieldClass, type);
-                dependency = get(type);
-            } else {
-                //by name
-                String fieldName = (Util.isEmpty(name) ? field.getName() : name);
-                dependency = get(fieldName);
-                if (dependency == null && type != Object.class) {
-                    assertAssignable(fieldClass, type);
-                    dependency = get(type);
-                }
-            }
+            Object dependency = doInjectDependency(fieldClass, field.getName(), resource);
             if (dependency != null) {
                 setFieldValue(field, instance, dependency);
             } else {
@@ -720,34 +705,38 @@ public final class BeanContainer {
         Set<Method> methods = ReflectionUtils.getAllMethods(beanClass, ReflectionUtils.withAnnotation(Resource.class));
         for (Method method : methods) {
             Resource resource = method.getAnnotation(Resource.class);
-            String resourceName = resource.name();
-            Class type = resource.type();
-            Object dependency;
             Parameter[] parameters = method.getParameters();
             if (parameters.length != 1) {
                 throw new IllegalStateException("We support one parameter only, method: " + method.toString() + ".");
             }
             Parameter parameter = parameters[0];
-            Class<?> parameterClass = parameter.getType();
-            if (type != Object.class && Util.isEmpty(resourceName)) {
-                //by type
-                assertAssignable(parameterClass, type);
-                dependency = get(type);
-            } else {
-                //by name
-                String name = (Util.isEmpty(resourceName) ? parameter.getName() : resourceName);
-                dependency = get(name);
-                if (dependency == null && type != Object.class) {
-                    assertAssignable(parameterClass, type);
-                    dependency = get(type);
-                }
-            }
+            Object dependency = doInjectDependency(parameter.getType(), parameter.getName(), resource);
             if (dependency != null) {
                 invokeMethod(method, instance, dependency);
             } else {
                 throw new IllegalStateException("Can't find a candidate for method: " + method.toString() + ".");
             }
         }
+    }
+
+    private Object doInjectDependency(Class<?> targetClass, String targetName, Resource resource) {
+        String resourceName = resource.name();
+        Class type = resource.type();
+        Object dependency;
+        if (type != Object.class && Util.isEmpty(resourceName)) {
+            //by type
+            assertAssignable(targetClass, type);
+            dependency = get(type);
+        } else {
+            //by name
+            String name = (Util.isEmpty(resourceName) ? targetName : resourceName);
+            dependency = get(name);
+            if (dependency == null && type != Object.class) {
+                assertAssignable(targetClass, type);
+                dependency = get(type);
+            }
+        }
+        return dependency;
     }
 
     /**
@@ -792,12 +781,12 @@ public final class BeanContainer {
     /**
      * 如果bean满足以下两个条件，那么将调用其{@link Destroy}方法.
      * <ul>
-     * <li>1. scope为{@link Scope#SINGLETOM}.</li>
+     * <li>1. scope为{@link Scope#SINGLETON}.</li>
      * <li>2. {@link BeanWrapper#getTarget()}不为null，即bean已经初始化.</li>
      * </ul>
      */
     private void invokeDestroyMethodsIfNecessary(BeanWrapper beanWrapper) {
-        if (beanWrapper.getScope() == Scope.SINGLETOM && beanWrapper.getTarget() != null) {
+        if (beanWrapper.getScope() == Scope.SINGLETON && beanWrapper.getTarget() != null) {
             Set<Method> methods = ReflectionUtils.getAllMethods(beanWrapper.getTargetClass(),
                     ReflectionUtils.withAnnotation(Destroy.class));
             if (methods.size() > 0) {

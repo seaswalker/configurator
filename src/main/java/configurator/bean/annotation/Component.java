@@ -16,8 +16,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Component {
 
-    public String name() default "";
+    String name() default "";
 
-    public Scope scope() default Scope.SINGLETOM;
+    Scope scope() default Scope.SINGLETON;
 
 }
