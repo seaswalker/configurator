@@ -19,6 +19,8 @@ public class Reporter {
     @Value(key = "china.leaders#count")
     private int leaderCount;
     private HashMap<Object, String> all;
+    @Value(key = "classpath.xml_value")
+    private int classpathXMLValue;
 
     public int getArea() {
         return area;
@@ -68,6 +70,7 @@ public class Reporter {
                 ", leaders=" + Arrays.toString(leaders) +
                 ", leaderCount=" + leaderCount +
                 ", all=" + all +
+                ", classpathXMLValue=" + classpathXMLValue +
                 '}';
     }
 }

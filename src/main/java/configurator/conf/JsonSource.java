@@ -5,11 +5,8 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import configurator.conf.exception.LoadException;
 
-import java.io.IOException;
+import java.io.*;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,8 +43,12 @@ public class JsonSource extends AbstractPathBasedSource {
      * 将json配置文件读取为字符串.
      */
     private String readAsString() throws IOException {
-        Path path = Paths.get(super.path);
-        List<String> lines = Files.readAllLines(path);
+        List<String> lines = new ArrayList<>();
+        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(super.path)));
+        String line;
+        while ((line = br.readLine()) != null) {
+            lines.add(line);
+        }
         return String.join("", lines);
     }
 

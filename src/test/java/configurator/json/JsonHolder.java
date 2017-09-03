@@ -33,6 +33,8 @@ public class JsonHolder {
     private String[] locIds;
     @Value(key = "interval.*")
     private Map<String, String> interval;
+    @Value(key = "classpath_name")
+    private String classPathName;
 
     @Value
     public void setIp(String ip) {
@@ -52,6 +54,8 @@ public class JsonHolder {
                 ", msisdns=" + Arrays.toString(msisdns) +
                 ", locIds=" + Arrays.toString(locIds) +
                 ", interval=" + interval +
+                ", classPathName='" + classPathName + '\'' +
                 '}';
     }
+
 }

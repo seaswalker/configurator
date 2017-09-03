@@ -7,54 +7,54 @@ import configurator.bean.annotation.Component;
  *
  * @author skywalker
  */
-public class BeanWrapper {
+public class BeanWrapper<T> {
 
     private Scope scope;
     private String beanName;
-    private Class targetClass;
-    private Object target;
+    private Class<T> targetClass;
+    private T target;
     /**
      * 是否正在创建对应的bean实例.
      */
     private boolean currentlyInCreation = false;
 
-    public Scope getScope() {
+    Scope getScope() {
         return scope;
     }
 
-    public void setScope(Scope scope) {
+    void setScope(Scope scope) {
         this.scope = scope;
     }
 
-    public String getBeanName() {
+    String getBeanName() {
         return beanName;
     }
 
-    public void setBeanName(String beanName) {
+    void setBeanName(String beanName) {
         this.beanName = beanName;
     }
 
-    public Class getTargetClass() {
+    Class<T> getTargetClass() {
         return targetClass;
     }
 
-    public void setTargetClass(Class targetClass) {
+    void setTargetClass(Class<T> targetClass) {
         this.targetClass = targetClass;
     }
 
-    public Object getTarget() {
+    T getTarget() {
         return target;
     }
 
-    public void setTarget(Object target) {
+    void setTarget(T target) {
         this.target = target;
     }
 
-    public boolean isCurrentlyInCreation() {
+    boolean isCurrentlyInCreation() {
         return currentlyInCreation;
     }
 
-    public void setCurrentlyInCreation(boolean currentlyInCreation) {
+    void setCurrentlyInCreation(boolean currentlyInCreation) {
         this.currentlyInCreation = currentlyInCreation;
     }
 

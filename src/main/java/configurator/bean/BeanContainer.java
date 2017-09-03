@@ -12,6 +12,7 @@ import org.reflections.ReflectionUtils;
 import configurator.util.Util;
 
 import javax.annotation.Resource;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -154,7 +155,7 @@ public final class BeanContainer {
     public <T> T get(Class<T> beanClass) {
         assertNotClosed();
         Objects.requireNonNull(beanClass);
-        List<BeanWrapper> candidates = new ArrayList<>();
+        List<BeanWrapper<T>> candidates = new ArrayList<>();
         T result = null;
         synchronized (monitor) {
             for (Map.Entry<Class, BeanWrapper> entry : classMap.entrySet()) {
@@ -162,7 +163,7 @@ public final class BeanContainer {
                     candidates.add(entry.getValue());
                 }
             }
-            BeanWrapper beanWrapper = findEligibleCandidate(candidates, beanClass);
+            BeanWrapper<T> beanWrapper = findEligibleCandidate(candidates, beanClass);
             if (beanWrapper != null) {
                 result = (T) loadBean(beanWrapper);
             }
@@ -180,13 +181,13 @@ public final class BeanContainer {
      *
      * @throws IllegalStateException 如果发现多个候选者
      */
-    private <T> BeanWrapper findEligibleCandidate(List<BeanWrapper> candidates, Class<T> requiredType) {
+    private <T> BeanWrapper findEligibleCandidate(List<BeanWrapper<T>> candidates, Class<T> requiredType) {
         int size = candidates.size();
-        BeanWrapper result = null;
+        BeanWrapper<T> result = null;
         if (size == 1) {
             result = candidates.get(0);
         } else if (size > 1) {
-            for (BeanWrapper candidate : candidates) {
+            for (BeanWrapper<T> candidate : candidates) {
                 if (candidate.getTargetClass() == requiredType) {
                     result = candidate;
                     break;
@@ -234,8 +235,8 @@ public final class BeanContainer {
      *                                    <li>bean的{@link Scope}不为{@linkplain Scope#SINGLETON}.</li>
      *                                    </ul>
      */
-    private Object loadBean(BeanWrapper beanWrapper) {
-        Object result = beanWrapper.getTarget();
+    private <T> T loadBean(BeanWrapper<T> beanWrapper) {
+        T result = beanWrapper.getTarget();
         if (beanWrapper.isCurrentlyInCreation()) {
             if (!allowCircularReference || (result == null) || beanWrapper.getScope() != Scope.SINGLETON) {
                 throw new CircularReferenceException("Circular reference bean '" + beanWrapper.getBeanName() + "'.");
@@ -256,7 +257,7 @@ public final class BeanContainer {
     /**
      * 将{@link BeanWrapper}的targetClass属性拼为字符串.
      */
-    private String getCandidatesInfo(List<BeanWrapper> candidates) {
+    private <T> String getCandidatesInfo(List<BeanWrapper<T>> candidates) {
         List<String> classes = candidates.stream().map(beanWrapper -> beanWrapper.getTargetClass().getName()).
                 collect(Collectors.toList());
         return ("[" + String.join(",", classes) + "}");
@@ -274,9 +275,9 @@ public final class BeanContainer {
     /**
      * 创建bean实例.
      */
-    private Object createBean(BeanWrapper beanWrapper) {
-        Class beanClass = beanWrapper.getTargetClass();
-        Object instance = newInstance(beanClass);
+    private <T> T createBean(BeanWrapper<T> beanWrapper) {
+        Class<T> beanClass = beanWrapper.getTargetClass();
+        T instance = newInstance(beanClass);
         if (instance != null) {
             if (allowCircularReference && beanWrapper.getScope() == Scope.SINGLETON) {
                 //earlyReference
@@ -301,10 +302,10 @@ public final class BeanContainer {
      *
      * @param destroyHint 如果为false，那么容器将不会尝试调用销毁方法
      */
-    public void detachBean(Class<?> beanClass, boolean destroyHint) {
+    public <T> void detachBean(Class<T> beanClass, boolean destroyHint) {
         assertNotClosed();
         Objects.requireNonNull(beanClass);
-        BeanWrapper beanWrapper;
+        BeanWrapper<T> beanWrapper;
         synchronized (monitor) {
             beanWrapper = classMap.remove(beanClass);
             nameMap.remove(beanWrapper.getBeanName());
@@ -409,7 +410,7 @@ public final class BeanContainer {
         if (value != null) {
             result = resolveConfByValue(parameter, name, parameter.getType(), parameter.getParameterizedType());
         } else {
-            Class type = parameter.getType();
+            Class<?> type = parameter.getType();
             if (type.isPrimitive()) {
                 throw new IllegalStateException("Can't inject to primitive type: " + parameter + ".");
             }
@@ -436,8 +437,8 @@ public final class BeanContainer {
     /**
      * 构造{@link BeanWrapper}.
      */
-    private BeanWrapper newBeanWrapper(String beanName, Scope scope, Class beanClass) {
-        BeanWrapper wrapper = new BeanWrapper();
+    private <T> BeanWrapper<T> newBeanWrapper(String beanName, Scope scope, Class<T> beanClass) {
+        BeanWrapper<T> wrapper = new BeanWrapper<>();
         wrapper.setBeanName(beanName);
         wrapper.setScope(scope);
         wrapper.setTargetClass(beanClass);
@@ -450,10 +451,10 @@ public final class BeanContainer {
      * @param beanClass {@link Class} bean类型
      * @throws IllegalStateException 如果构造失败
      */
-    private Object newInstance(Class beanClass) {
-        Object instance;
+    private <T> T newInstance(Class<T> beanClass) {
+        T instance;
         try {
-            Constructor[] constructors = beanClass.getConstructors();
+            Constructor<?>[] constructors = beanClass.getConstructors();
             int length = constructors.length;
             if (length == 0) {
                 throw new IllegalStateException("There are no public constructors in " + beanClass.getName() + ".");
@@ -464,7 +465,7 @@ public final class BeanContainer {
             Constructor constructor = constructors[0];
             Parameter[] parameters = constructor.getParameters();
             Object[] args = resolveArgs(parameters);
-            instance = constructor.newInstance(args);
+            instance = (T) constructor.newInstance(args);
         } catch (InstantiationException e) {
             throw new IllegalStateException("Construct bean failed, maybe there is no default constructor.", e);
         } catch (IllegalAccessException e) {
@@ -486,7 +487,7 @@ public final class BeanContainer {
     /**
      * 对标注在{@link Field}上的{@link Value}进行注入.
      */
-    private void injectConfByField(Object instance, Class beanClass) {
+    private void injectConfByField(Object instance, Class<?> beanClass) {
         Set<Field> fields = ReflectionUtils.getAllFields(beanClass, ReflectionUtils.withAnnotation(Value.class));
         for (Field field : fields) {
             Object result = resolveConfByValue(field, field.getName(), field.getType(), field.getGenericType());
@@ -624,7 +625,7 @@ public final class BeanContainer {
      *
      * @return true，如果满足
      */
-    private boolean isEligibleMap(Class clazz, Type type) {
+    private boolean isEligibleMap(Class<?> clazz, Type type) {
         if (Map.class.isAssignableFrom(clazz)) {
             if (type instanceof ParameterizedType) {
                 ParameterizedType pt = (ParameterizedType) type;
